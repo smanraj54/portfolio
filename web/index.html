@@ -1,10 +1,131 @@
 <!doctype html>
-<html lang="en">
+<html lang="en" data-theme="dark">
   <head>
     <meta charset="UTF-8" />
-    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>web</title>
+
+    <!--
+      No-flash theme resolution (§4.3). Must run before any stylesheet so the
+      first paint is already in the right palette. Inline and synchronous on
+      purpose: an external or deferred script would repaint.
+
+      The reference template masked the repaint with a full-screen spinner on
+      every theme change; with CSS custom properties there is nothing to mask.
+    -->
+    <script>
+      ;(function () {
+        try {
+          var stored = localStorage.getItem('theme')
+          if (stored !== 'light' && stored !== 'dark') {
+            stored = window.matchMedia('(prefers-color-scheme: light)').matches
+              ? 'light'
+              : 'dark'
+          }
+          document.documentElement.dataset.theme = stored
+        } catch (e) {
+          // Private browsing can throw on localStorage access. Dark is the default.
+          document.documentElement.dataset.theme = 'dark'
+        }
+      })()
+    </script>
+
+    <title>Manraj Singh — Senior Software Engineer</title>
+    <meta
+      name="description"
+      content="Senior Software Engineer with 7+ years building backend and distributed systems, including 3.5 years at Amazon. Cloud architecture on AWS, real-time protocol design, and retrieval-augmented generation."
+    />
+    <meta name="author" content="Manraj Singh" />
+
+    <!--
+      Absolute URLs below must match VITE_SITE_ORIGIN in web/.env — index.html
+      cannot read import.meta.env. A test asserts the two agree.
+    -->
+    <link rel="canonical" href="https://manrajsingh.dev/" />
+
+    <meta name="theme-color" content="#0c0c0c" media="(prefers-color-scheme: dark)" />
+    <meta name="theme-color" content="#edf1f3" media="(prefers-color-scheme: light)" />
+    <meta name="color-scheme" content="dark light" />
+
+    <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+    <link rel="icon" href="/favicon.ico" sizes="32x32" />
+    <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+    <link rel="manifest" href="/site.webmanifest" />
+
+    <!-- Body face only. The display and mono faces are not on the LCP path. -->
+    <link
+      rel="preload"
+      href="/fonts/inter-latin-wght-normal.woff2"
+      as="font"
+      type="font/woff2"
+      crossorigin
+    />
+
+    <!-- Open Graph -->
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content="Manraj Singh" />
+    <meta property="og:title" content="Manraj Singh — Senior Software Engineer" />
+    <meta
+      property="og:description"
+      content="Backend and distributed systems, including 3.5 years at Amazon. Cloud architecture on AWS, real-time protocol design, and retrieval-augmented generation."
+    />
+    <meta property="og:url" content="https://manrajsingh.dev/" />
+    <meta property="og:image" content="https://manrajsingh.dev/og-image.png" />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
+    <meta
+      property="og:image:alt"
+      content="Manraj Singh — Senior Software Engineer"
+    />
+    <meta property="og:locale" content="en_CA" />
+
+    <!-- Twitter -->
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="Manraj Singh — Senior Software Engineer" />
+    <meta
+      name="twitter:description"
+      content="Backend and distributed systems, including 3.5 years at Amazon. Cloud architecture on AWS, real-time protocol design, and retrieval-augmented generation."
+    />
+    <meta name="twitter:image" content="https://manrajsingh.dev/og-image.png" />
+
+    <script type="application/ld+json">
+      {
+        "@context": "https://schema.org",
+        "@type": "Person",
+        "name": "Manraj Singh",
+        "jobTitle": "Senior Software Engineer",
+        "url": "https://manrajsingh.dev/",
+        "email": "mailto:smanraj54@gmail.com",
+        "telephone": "+1-902-412-9128",
+        "address": {
+          "@type": "PostalAddress",
+          "addressLocality": "Surrey",
+          "addressRegion": "BC",
+          "addressCountry": "CA"
+        },
+        "knowsAbout": [
+          "Distributed Systems",
+          "Backend Engineering",
+          "Amazon Web Services",
+          "Retrieval-Augmented Generation",
+          "Java",
+          "TypeScript"
+        ],
+        "alumniOf": [
+          {
+            "@type": "CollegeOrUniversity",
+            "name": "Dalhousie University"
+          },
+          {
+            "@type": "CollegeOrUniversity",
+            "name": "Thapar Institute of Engineering and Technology"
+          }
+        ],
+        "sameAs": [
+          "https://github.com/smanraj54",
+          "https://www.linkedin.com/in/smanraj54/"
+        ]
+      }
+    </script>
   </head>
   <body>
     <div id="root"></div>
