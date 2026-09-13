@@ -1,0 +1,22 @@
+{
+  "name": "portfolio",
+  "private": true,
+  "type": "module",
+  "workspaces": [
+    "web",
+    "api",
+    "infra"
+  ],
+  "overrides": {
+    "typescript": "^5.8.0"
+  },
+  "scripts": {
+    "dev:api": "npm run dev --workspace=api",
+    "dev:web": "npm run dev --workspace=web",
+    "build": "npm run build --workspaces --if-present",
+    "deploy": "npm run deploy --workspace=infra"
+  },
+  "devDependencies": {
+    "dotenv": "^17.4.2"
+  }
+}
