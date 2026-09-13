@@ -1,0 +1,48 @@
+/*
+ * Node-side tests: the ones that assert things about files on disk rather than
+ * about rendered output.
+ *
+ * `src/styles/theme.node.test.ts` reads theme.css and index.html with
+ * `node:fs`, because what it checks is the *source* — that the CSS timings match
+ * the TS constants, that index.html's hard-coded values match the palette, that
+ * the preloaded font actually exists. None of that is observable from inside a
+ * jsdom render, and Vitest runs its test files in Node regardless of the
+ * `environment` setting, so `node:fs` works at runtime.
+ *
+ * It gets its own project only so `@types/node` stays out of tsconfig.app.json.
+ * Module resolution is `bundler`, not `nodenext`, because Vite resolves these
+ * files — unlike vite.config.ts, which Node itself loads and which is therefore
+ * still covered by tsconfig.node.json.
+ */
+{
+  "compilerOptions": {
+    "tsBuildInfoFile": "./node_modules/.tmp/tsconfig.test.tsbuildinfo",
+    "target": "es2023",
+    "lib": ["ES2023"],
+    "types": ["node", "vite/client", "vitest/globals"],
+    "skipLibCheck": true,
+
+    "strict": true,
+
+    /* Bundler mode — matches tsconfig.app.json, since Vite does the resolving. */
+    "module": "esnext",
+    "moduleResolution": "bundler",
+    "allowImportingTsExtensions": true,
+    "verbatimModuleSyntax": true,
+    "moduleDetection": "force",
+    "noEmit": true,
+
+    /* Must mirror resolve.alias in vite.config.ts. */
+    "baseUrl": ".",
+    "paths": {
+      "@/*": ["./src/*"]
+    },
+
+    /* Linting */
+    "noUnusedLocals": true,
+    "noUnusedParameters": true,
+    "erasableSyntaxOnly": true,
+    "noFallthroughCasesInSwitch": true
+  },
+  "include": ["src/**/*.node.test.ts"]
+}
