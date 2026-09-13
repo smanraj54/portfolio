@@ -1,0 +1,475 @@
+@import "tailwindcss";
+
+/* ---------------------------------------------------------------------------
+   Fonts — latin + latin-ext subsets only (English-only site, §1).
+   Files live in /public/fonts so they keep a stable URL and the body face can
+   be preloaded from index.html. Sourced from @fontsource-variable/* (OFL),
+   licences alongside the files.
+   Unused subsets are never fetched: unicode-range gates each @font-face.
+--------------------------------------------------------------------------- */
+@font-face {
+  font-family: "Inter Variable";
+  font-style: normal;
+  font-display: swap;
+  font-weight: 100 900;
+  src: url("/fonts/inter-latin-wght-normal.woff2") format("woff2-variations");
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA,
+    U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191,
+    U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+@font-face {
+  font-family: "Inter Variable";
+  font-style: normal;
+  font-display: swap;
+  font-weight: 100 900;
+  src: url("/fonts/inter-latin-ext-wght-normal.woff2") format("woff2-variations");
+  unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7,
+    U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F,
+    U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C0, U+2113, U+2C60-2C7F,
+    U+A720-A7FF;
+}
+
+@font-face {
+  font-family: "Space Grotesk Variable";
+  font-style: normal;
+  font-display: swap;
+  font-weight: 300 700;
+  src: url("/fonts/space-grotesk-latin-wght-normal.woff2") format("woff2-variations");
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA,
+    U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191,
+    U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+@font-face {
+  font-family: "Space Grotesk Variable";
+  font-style: normal;
+  font-display: swap;
+  font-weight: 300 700;
+  src: url("/fonts/space-grotesk-latin-ext-wght-normal.woff2") format("woff2-variations");
+  unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7,
+    U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F,
+    U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C0, U+2113, U+2C60-2C7F,
+    U+A720-A7FF;
+}
+
+@font-face {
+  font-family: "JetBrains Mono Variable";
+  font-style: normal;
+  font-display: swap;
+  font-weight: 100 800;
+  src: url("/fonts/jetbrains-mono-latin-wght-normal.woff2") format("woff2-variations");
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA,
+    U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191,
+    U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+@font-face {
+  font-family: "JetBrains Mono Variable";
+  font-style: normal;
+  font-display: swap;
+  font-weight: 100 800;
+  src: url("/fonts/jetbrains-mono-latin-ext-wght-normal.woff2") format("woff2-variations");
+  unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7,
+    U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F,
+    U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C0, U+2113, U+2C60-2C7F,
+    U+A720-A7FF;
+}
+
+/* ---------------------------------------------------------------------------
+   Dark is the default; light is opt-in via [data-theme="light"] on <html>.
+   Use as `light:` in markup, e.g. `class="shadow-none light:shadow-sm"`.
+--------------------------------------------------------------------------- */
+@custom-variant light (&:where([data-theme="light"], [data-theme="light"] *));
+
+/* `static` matters: Tailwind tree-shakes theme variables that no generated
+   utility references. The z-index ladder is reserved for Phase 2 and
+   --duration-section is read back by a test, so both must be emitted whether
+   or not a class uses them today. */
+@theme static {
+  --font-display: "Space Grotesk Variable", system-ui, sans-serif;
+  --font-sans: "Inter Variable", system-ui, sans-serif;
+  --font-mono: "JetBrains Mono Variable", ui-monospace, monospace;
+
+  --radius-card: 10px;
+  --radius-board: 8px;
+  --radius-chip: 6px;
+
+  --spacing-shell: 0.5rem;
+  --spacing-shell-mobile: 5px;
+
+  /* Namespaces chosen for the utility they generate:
+     --width-*  → w-sidebar,  --height-* → h-tabbar,
+     --container-* → max-w-content. (--size-* would set width AND height.) */
+  --width-sidebar: 280px;
+  --width-sidebar-shrunk: 120px;
+  --height-tabbar: 55px;
+  --container-content: 1300px;
+
+  /* Motion. Single source of truth: lib/transition.ts asserts these match its
+     constants, and markup consumes them as duration-(--duration-section).
+     Tailwind has no --duration-* namespace, so these emit only because of
+     `static` — without it they would silently vanish and the test would fail. */
+  --duration-section: 500ms;
+  --duration-fade: 300ms;
+
+  /* Decelerating, with almost no acceleration at the start, so a section looks
+     like it was already moving when it entered the frame. The --ease-*
+     namespace is real, so this also spells the `ease-section` utility. */
+  --ease-section: cubic-bezier(0.22, 1, 0.36, 1);
+
+  /* Phase 2 seam (§8) — fixed now so ordering is never renegotiated.
+     The --z-index-* namespace is what makes `z-shell`, `z-tabbar`, … real
+     Tailwind utilities rather than arbitrary values. */
+  --z-index-shell: 40;
+  --z-index-tabbar: 50;
+  --z-index-chat: 900;
+  --z-index-modal: 1000;
+  --z-index-preloader: 1100;
+
+  /* Semantic colours resolve through the palettes below, so Tailwind emits
+     utilities (bg-card, text-muted, border-control, …) that follow the theme.
+     Utility names read straight off the token name: --color-card → bg-card,
+     --color-muted → text-muted, --color-control → border-control. */
+  --color-accent: var(--palette-accent);
+  --color-accent-hover: var(--palette-accent-hover);
+  --color-data: var(--palette-data);
+
+  --color-page: var(--palette-page);
+  --color-card: var(--palette-card);
+  --color-board: var(--palette-board);
+  --color-popover: var(--palette-popover);
+  --color-empty: var(--palette-empty);
+
+  /* `--color-control` rather than `--color-border-strong`: the border utility
+     is `border-<colour-name>`, so the latter would spell `border-border-strong`.
+
+     Which of the two a `bg-board` card wants is not a taste call, and the About
+     pane settles it by putting both side by side. A card's outline is judged
+     against the two surfaces it separates, and the weaker pair governs:
+
+                        vs board fill   vs card behind
+       border   dark        1.03            1.04
+                light       1.15            1.24
+       control  dark        3.01            3.25
+                light       3.40            3.66
+
+     `bg-board` on `bg-card` is itself only 1.08:1 in both themes, so a board card
+     with a plain `border` has no perceivable edge from either the fill or the
+     stroke. That is not theoretical: the "At a glance" rows read as loose text
+     under the four stat cards until they were given `border-control` too.
+
+     So a surface meant to read as a card carries `border-control`, which clears
+     1.4.11's 3:1 for a non-text boundary on both fills in both themes. `border`
+     stays for what it is named after — a rule between things already delineated,
+     like a `divide-y` inside one card.
+
+     Area is part of the judgement, which is why the section pane is the exception
+     rather than a violation: `bg-card` on `bg-page` is only 1.11:1 in dark and
+     1.14:1 in light, barely above the board-on-card step, yet the pane reads as a
+     panel anyway because it is 1300px wide with a long straight edge and rounded
+     corners. A luminance step that large an area can carry is one a 1px line or a
+     chip cannot. So the pane keeps a plain `border`, and putting a 3:1 stroke
+     around the whole thing would frame the page rather than delineate a card. */
+  --color-border: var(--palette-border);
+  --color-control: var(--palette-border-strong);
+
+  --color-text: var(--palette-text);
+  --color-muted: var(--palette-text-muted);
+  --color-faint: var(--palette-text-faint);
+  --color-danger: var(--palette-danger);
+}
+
+/* ---------------------------------------------------------------------------
+   Palettes. Every value below is a measured WCAG figure, not an estimate:
+     dark  accent  #6FD3E7 → 11.32 on page, 10.17 on card   (AAA body text)
+     dark  data    #F0B95A → 10.98 on page,  9.87 on card   (AAA body text)
+     light accent  #155E75 →  6.39 on page,  7.27 on card   (AA  body text)
+     light data    #7A4F06 →  6.27 on page,  7.12 on card   (AA  body text)
+   Hex, not oklch: these exact values are the ones the ratios were measured
+   against, so there is no conversion drift between spec and stylesheet.
+   Derived one-off shades use color-mix(in oklab, …) at the point of use
+   rather than a generated 16-step ramp.
+--------------------------------------------------------------------------- */
+:root,
+[data-theme="dark"] {
+  --palette-accent: #6fd3e7;
+  --palette-accent-hover: #8fe0f0; /* 11.80 on card */
+  --palette-data: #f0b95a;
+
+  --palette-page: #0c0c0c;
+  --palette-card: #191919;
+  --palette-board: #202020;
+  --palette-popover: #0e0e0e;
+  --palette-empty: #131313;
+
+  --palette-border: #1d1d1d; /* decorative separator only */
+  --palette-border-strong: #6a6a6a; /* 3.25 on card — WCAG 1.4.11 for controls */
+
+  --palette-text: #eeeeee; /* 15.15 on card */
+  --palette-text-muted: #a4afb5; /*  7.85 on card */
+  --palette-text-faint: #828b93; /*  5.08 on card — was #6c757d at 3.75, under AA */
+  --palette-danger: #fdd2d2; /* 12.83 on card */
+
+  color-scheme: dark;
+}
+
+[data-theme="light"] {
+  --palette-accent: #155e75;
+  --palette-accent-hover: #0e4a5c; /* 9.76 on card */
+  --palette-data: #7a4f06;
+
+  --palette-page: #edf1f3;
+  --palette-card: #ffffff;
+  --palette-board: #f4f7f8;
+  --palette-popover: #ffffff;
+  --palette-empty: #f8fafb;
+
+  --palette-border: #e2e8ea;
+  --palette-border-strong: #7d878f; /* 3.66 on card, 3.22 on page */
+
+  --palette-text: #16191c; /* 17.65 on card */
+  --palette-text-muted: #55606a; /*  6.43 on card */
+  --palette-text-faint: #656f7a; /*  5.11 on card — was #7b8792 at 3.67, under AA */
+  --palette-danger: #932626; /*  8.25 on card */
+
+  color-scheme: light;
+}
+
+/* ---------------------------------------------------------------------------
+   Base layer
+--------------------------------------------------------------------------- */
+/* ---------------------------------------------------------------------------
+   Why every `<ul>` and `<ol>` in this codebase carries an explicit `role="list"`.
+
+   Tailwind's preflight sets `list-style: none` on `ol, ul, menu`, and WebKit
+   treats a list with no marker as presentational — it drops the `list` and
+   `listitem` roles, so VoiceOver stops announcing "list, 7 items" and reads the
+   children as unrelated runs of text. Every list here is a countable set whose
+   size is worth knowing before stepping into it, which is the entire reason the
+   markup is a list rather than a stack of `<div>`s, so the semantics are the part
+   that must not be optional.
+
+   Re-declaring `list-style` would bring the markers back, and `role="list"` is
+   the fix WebKit itself documents. It is redundant markup on every other engine
+   and costs nothing there.
+
+   It is the missing marker that triggers this, not the tag, so a list that puts
+   its markers back needs nothing: `BulletList` in ArticleTimeline sets
+   `list-disc` and is the one list here without the attribute.
+
+   This is recorded here, once, because `list-style: none` is where the problem
+   starts; the `role="list"` attributes at the call sites are deliberately left
+   uncommented rather than repeating this note eleven times.
+--------------------------------------------------------------------------- */
+@layer base {
+  *,
+  *::before,
+  *::after {
+    /* Tailwind's preflight already does border-box; this pins the border
+       colour to the theme so `border` alone never draws Tailwind's default. */
+    border-color: var(--color-border);
+  }
+
+  html {
+    background-color: var(--color-page);
+    -webkit-text-size-adjust: 100%;
+  }
+
+  body {
+    margin: 0;
+    background-color: var(--color-page);
+    color: var(--color-text);
+    font-family: var(--font-sans);
+    font-synthesis-weight: none;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  h1,
+  h2,
+  h3,
+  h4 {
+    font-family: var(--font-display);
+    font-weight: 600;
+    letter-spacing: -0.015em;
+  }
+
+  /* One focus treatment, everywhere. §7 requires it on every interactive
+     element; putting it on :focus-visible means mouse clicks stay quiet. */
+  :focus-visible {
+    outline: 2px solid var(--color-accent);
+    outline-offset: 2px;
+    border-radius: 2px;
+  }
+
+  /* Native scrolling (no smooth-scrollbar), styled to match the palette. */
+  @supports (scrollbar-color: auto) {
+    * {
+      scrollbar-color: var(--color-control) transparent;
+      scrollbar-width: thin;
+    }
+  }
+  ::-webkit-scrollbar {
+    width: 10px;
+    height: 10px;
+  }
+  ::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  ::-webkit-scrollbar-thumb {
+    background: color-mix(in oklab, var(--color-control) 70%, transparent);
+    border: 2px solid transparent;
+    background-clip: content-box;
+    border-radius: 999px;
+  }
+  ::-webkit-scrollbar-thumb:hover {
+    background: var(--color-control);
+    background-clip: content-box;
+  }
+
+  /* Selection uses the interactive accent, not the data accent. */
+  ::selection {
+    background: color-mix(in oklab, var(--color-accent) 30%, transparent);
+    color: var(--color-text);
+  }
+}
+
+/* ---------------------------------------------------------------------------
+   Shell geometry (§4.2)
+--------------------------------------------------------------------------- */
+
+/* iOS reports `100vh` as the *large* viewport — the one hidden behind the
+   address bar — so a 100vh shell is cropped at the bottom until the visitor
+   scrolls, which is exactly what a non-scrolling shell can never do. `100svh`
+   is the small viewport and is always fully visible; the `100vh` line above it
+   is the fallback for browsers without the newer units.
+
+   Deliberately not `100dvh`: that tracks the address bar as it hides, so the
+   whole layout would resize mid-scroll. */
+@utility shell-viewport {
+  height: 100vh;
+  height: 100svh;
+}
+
+/* Below `md` the tab bar is `position: fixed`, so it is out of flow and would
+   sit on top of the last few lines of every section. This reserves its height
+   at the bottom of the shell — plus the home-bar inset on an iPhone, plus one
+   more gap so the final line clears the bar rather than touching it.
+
+   A named utility rather than an arbitrary value in the markup: `calc()` needs
+   real whitespace around its operators, which in a Tailwind arbitrary value has
+   to be spelled with underscores, and
+   `pb-[calc(var(--height-tabbar)_+_env(safe-area-inset-bottom)_+_var(--spacing-shell-mobile))]`
+   is not something anyone should have to read twice. */
+@utility shell-bottom-gap {
+  padding-bottom: calc(
+    var(--height-tabbar) + env(safe-area-inset-bottom) + var(--spacing-shell-mobile)
+  );
+}
+
+/* ---------------------------------------------------------------------------
+   The section stage — §5.2. One grid cell, five panes stacked in it.
+
+   Every rule below is keyed on `data-status`, whose values are the literal
+   strings of `SectionStatus` in lib/transition.ts. Attributes rather than
+   conditional class strings: six states across two properties is unreadable as
+   JSX, and this keeps the CSS timing beside the transition it belongs to.
+--------------------------------------------------------------------------- */
+@layer components {
+  /* Travel direction is one attribute on the stage, so a single write flips
+     which way all five panes move. */
+  .section-stage {
+    --section-shift: 1.75rem;
+    --section-enter: var(--section-shift);
+    --section-exit: calc(-1 * var(--section-shift));
+  }
+
+  .section-stage[data-direction="back"] {
+    --section-enter: calc(-1 * var(--section-shift));
+    --section-exit: var(--section-shift);
+  }
+
+  .section-pane {
+    grid-area: 1 / 1;
+    /* Without this a tall pane refuses to shrink and gives the stage a
+       scrollbar instead of scrolling its own content. */
+    min-height: 0;
+    transition:
+      opacity var(--duration-fade) var(--ease-section),
+      transform var(--duration-section) var(--ease-section);
+  }
+
+  /* Off-stage. `content-visibility` skips layout and paint for the four
+     sections nobody is looking at — most of the document's DOM.
+
+     Not the `hidden` attribute: that is `display: none`, which removes the pane
+     from the grid, so the shared cell would collapse to whatever the single
+     visible section needs and the layout would resize on every navigation. */
+  .section-pane[data-status="hidden"] {
+    opacity: 0;
+    visibility: hidden;
+    content-visibility: hidden;
+    transition: none;
+  }
+
+  /* The priming frame: at the start point with transitions off, so the slide
+     begins from the right place rather than animating in from nowhere
+     (§5.2 rule 1). The frame after this one flips to `showing`, and *that* is
+     what the browser animates. */
+  .section-pane[data-status="will-show"] {
+    opacity: 0;
+    transform: translateY(var(--section-enter));
+    transition: none;
+  }
+
+  .section-pane[data-status="showing"] {
+    opacity: 1;
+    transform: translateY(0);
+  }
+
+  /* `none`, not `translateY(0)`: a settled section should not be a containing
+     block for fixed-position descendants, and dropping the transform lets the
+     compositor hand text rendering back to the main thread — subpixel
+     antialiasing returns and the type stops looking soft. */
+  .section-pane[data-status="shown"] {
+    opacity: 1;
+    transform: none;
+  }
+
+  /* Still at rest. The outgoing section must not jump before it moves. */
+  .section-pane[data-status="will-hide"] {
+    opacity: 1;
+    transform: translateY(0);
+  }
+
+  .section-pane[data-status="hiding"] {
+    opacity: 0;
+    transform: translateY(var(--section-exit));
+  }
+
+  /* Promote only while something is genuinely moving. Five permanently
+     composited full-page layers is real memory on a phone. */
+  .section-pane[data-status="showing"],
+  .section-pane[data-status="hiding"] {
+    will-change: opacity, transform;
+  }
+
+  /* Belt and braces with `inert`: a pane that is still painted but not settled
+     must not swallow a click aimed at the one that is (§5.2 rule 6). */
+  .section-pane:not([data-status="shown"]) {
+    pointer-events: none;
+  }
+}
+
+/* ---------------------------------------------------------------------------
+   Reduced motion — §5.2 rule 4. Collapses every transition to instant.
+   The state machine also skips its timers; this covers CSS-only motion.
+--------------------------------------------------------------------------- */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
