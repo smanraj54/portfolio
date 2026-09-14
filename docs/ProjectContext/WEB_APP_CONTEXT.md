@@ -53,7 +53,7 @@ degrades to a documented "not configured" message without credentials.
 
 | Variable | Effect when unset |
 |---|---|
-| `VITE_SITE_ORIGIN` | falls back to `https://manrajsingh.dev` in `lib/site.ts` |
+| `VITE_SITE_ORIGIN` | falls back to `https://manrajsingh.ca` in `lib/site.ts` — the production origin, so CI leaves it unset |
 | `VITE_EMAILJS_SERVICE_ID` / `_TEMPLATE_ID` / `_PUBLIC_KEY` | form returns `kind: 'unconfigured'` and tells the visitor to email directly |
 | `VITE_CONTACT_FAKE=true` | resolves a send locally after 700 ms without sending mail; a message starting with `fail` simulates a provider error |
 
@@ -568,12 +568,15 @@ for why `ArticleSkills` renders type weight instead of bars. Keep or delete on p
 **Stock leftovers, unreferenced:** `src/assets/{hero.png,react.svg,vite.svg}` and `public/icons.svg`.
 
 **Deferred by design:** no spam defence beyond the EmailJS allow-list (§7.5); the bundle exceeds the 250 kB
-tripwire (§1); `/blog`-style unknown URLs are corrected client-side rather than answered with a real 404, which
-needs the CloudFront custom-error mapping recorded as a TODO in `App.tsx` and `infra/lib/api-stack.ts`.
+tripwire (§1); `/blog`-style unknown URLs are corrected client-side rather than answered with a real 404. The
+latter is now a deliberate end state, not a gap: `infra/lib/web-stack.ts` maps 403/404 to `/index.html` at 200, so
+every unknown path is a soft 404 by construction. Real 404s would need `cloudfront.AccessLevel.LIST` on the origin
+(so S3 can answer 404 at all) plus a `NotFound` view — disproportionate for a five-section site.
 
-**Outside `web/`:** `api/` has no source files at all; `infra/`'s three stack classes are still empty CDK
-scaffolds and only `DataStack` is instantiated. The **CloudFront 403/404 → `/index.html`** rewrite is the one
-infra item this app hard-depends on — without it, every deep link 404s in production.
+**Outside `web/`:** `api/` has no source files at all; `DataStack` and `SyncStack` are still empty CDK scaffolds.
+The **CloudFront 403/404 → `/index.html`** rewrite this app hard-depends on now exists in
+`infra/lib/web-stack.ts`, and `.github/workflows/deploy-web.yml` publishes `web/dist` on push to `main` — but
+neither stack has been deployed yet, so nothing is live.
 
 ---
 

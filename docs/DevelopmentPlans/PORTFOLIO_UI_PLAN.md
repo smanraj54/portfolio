@@ -647,3 +647,6 @@ one drift the template actually suffers from.
    Worth a decision before milestone 5.
 5. **CloudFront 403/404 → `/index.html`** must be set when `infra` is wired up, or deep links will 404 in
    production. Out of scope now; record it in `infra/lib/api-stack.ts` as a TODO.
+   → **Resolved.** It landed in `infra/lib/web-stack.ts`, not `api-stack.ts`; the distribution belongs to
+   `WebStack`. Only the 403 mapping actually fires — OAC grants `s3:GetObject` but not `s3:ListBucket`, so S3
+   answers 403 for a missing key. Not yet deployed.

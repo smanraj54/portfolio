@@ -91,15 +91,23 @@ portfolio/
 │   ├── package.json          # dev: tsx watch local/server.ts (that file does not exist)
 │   └── tsconfig.json
 └── infra/                    # AWS CDK v2 (TypeScript)
-    ├── bin/infra.ts          # instantiates DataStack only
+    ├── bin/infra.ts          # instantiates DataStack, WebStack, CicdStack
     ├── cdk.json              # app: npx tsc && npx tsx bin/infra.ts
+    ├── cdk.context.json      # cached hosted-zone lookup — COMMITTED on purpose
     ├── jest.config.js        # jest + @swc/jest
     ├── lib/
+    │   ├── web-stack.ts      # S3 + CloudFront + Route 53 — the live site
+    │   ├── cicd-stack.ts     # GitHub OIDC provider + deploy role
     │   ├── data-stack.ts     # EMPTY placeholder class
     │   ├── api-stack.ts      # EMPTY placeholder class, not instantiated
     │   └── sync-stack.ts     # EMPTY placeholder class, not instantiated
-    └── test/infra.test.ts    # stock CDK template test
+    └── test/
+        ├── web-stack.test.ts  # template assertions
+        ├── cicd-stack.test.ts # trust policy + least privilege
+        └── infra.test.ts      # stock CDK template test
 ```
+
+Plus `.github/workflows/deploy-web.yml` at the root: builds `web` and publishes `web/dist` on push to `main`.
 
 Directory intent, as the user states it: **`web` = UI, `api` = backend, `infra` = AWS services (CDK,
 CloudFront).**
@@ -164,34 +172,60 @@ Root: `npm run dev:web`, `npm run dev:api`, `npm run build` (all workspaces), `n
 
 ## 4. Deployment architecture
 
-**Intended (from the scaffolding and stated intent) — not yet built:**
+**Built (`WebStack` + `CicdStack`, synthesized and diffed; deploy is manual and still pending):**
 
-- `web` builds to static assets → **S3 + CloudFront** (CDN, custom domain, HTTPS). The `infra` workspace is
-  where CloudFront lives.
-- `api` → **AWS Lambda** (Node), fronted by API Gateway or a Lambda function URL behind the same
-  CloudFront distribution. Not yet decided.
+- Domain **`manrajsingh.ca`** (Namecheap registration, Route 53 public zone `Z000911238MPFP38YA75M`, account
+  `593793064239`, us-east-1). ACM certificate covering the apex and `*.manrajsingh.ca` is **imported, never
+  created** — same for the hosted zone.
+- `web` builds to static assets → a **private** S3 bucket (BLOCK_ALL, SSE-S3, enforceSSL, RETAIN) read only by
+  CloudFront through **Origin Access Control**. Not a website-endpoint bucket. A/AAAA aliases for both the apex
+  and `www`.
+- `CicdStack` holds the **GitHub OIDC provider and deploy role**, deliberately separate from `WebStack`: the
+  provider is an account-level singleton that must outlive any one site stack. There are no AWS access keys in
+  this repo — the workflow assumes a role scoped to this repository's immutable ids on `refs/heads/main`.
+- `api` → **AWS Lambda** (Node), fronted by API Gateway or a Lambda function URL. Not yet decided. Note it will
+  need a *second* CloudFront behaviour on the WebStack distribution rather than its own.
 - RAG retrieval → **Amazon Bedrock** (both Bedrock Runtime and Bedrock Agent Runtime SDKs are already
   dependencies), with `api/src/sync/` intended to push `knowledge/*.md` into the vector store.
-- Three CDK stacks are stubbed: `DataStack` (vector store / knowledge base / tables), `ApiStack`
-  (Lambda + CloudFront + S3), `SyncStack` (knowledge ingestion). Only `DataStack` is wired into
-  `bin/infra.ts`; all three class bodies are empty.
-- Region/account come from `CDK_DEFAULT_ACCOUNT` / `CDK_DEFAULT_REGION` in `infra/.env` (gitignored).
+- `DataStack` (vector store / knowledge base / tables) and `SyncStack` (knowledge ingestion) are still empty
+  stubs. `ApiStack` is empty and **no longer owns CloudFront or S3** — `WebStack` does.
+- Region/account come from `CDK_DEFAULT_ACCOUNT` / `CDK_DEFAULT_REGION` in `infra/.env` (gitignored), but
+  `WebStack` pins `us-east-1` explicitly: CloudFront accepts certificates from no other region, and
+  `HostedZone.fromLookup` refuses an env-agnostic stack.
 
 **The load-bearing consequence:** the site is a **statically hosted SPA on S3 + CloudFront**. There is no Node
 server rendering the pages, so anything requiring request-time SSR, server actions or Node middleware is out.
 
-**One hard dependency, still open.** §7 item 3 resolved in favour of real client-side routes, so the
-distribution **must** map 403 and 404 to `/index.html` with a 200. Without it every deep link (`/skills`,
-`/contact`) 404s in production even though it works in `vite dev` and `vite preview`. This is recorded as a
-TODO in `web/src/App.tsx` and `infra/lib/api-stack.ts`, and it is the single most important infra task.
+**The hard dependency, now met.** §7 item 3 resolved in favour of real client-side routes, so the distribution
+**must** map 403 and 404 to `/index.html` with a 200. Without it every deep link (`/skills`, `/contact`) 404s in
+production even though it works in `vite dev` and `vite preview`. `infra/lib/web-stack.ts` now does this via
+`errorResponses`.
+
+In practice **only the 403 entry ever fires**: the OAC bucket policy grants `s3:GetObject` and *not*
+`s3:ListBucket`, and S3 answers 403 rather than 404 for a missing key when the caller cannot list the bucket. The
+404 entry is kept because it costs nothing and documents intent. Two consequences worth knowing:
+
+- The rewrite cannot mask a wholly broken origin. If `/index.html` itself is unreadable CloudFront cannot fetch
+  the error page and returns the origin's status — so an **empty bucket serves 403, not a blank 200**. Expect that
+  window between the first `cdk deploy` and the first content sync.
+- Every genuinely missing URL now answers **200 `text/html`**, which is why `web/index.html` must not reference
+  files that do not exist (see §8).
 
 The app corrects near-miss and unknown URLs client-side (`/skills/` → `/skills`, `/blog` → `/`), which is a
 nicety on top of that rewrite, **not a substitute for it** — the correction only runs once the SPA has loaded.
 
+**Deploy split.** Infrastructure changes are **manual** — `cd infra && AWS_PROFILE=portfolio npx cdk deploy
+WebStack CicdStack`. Only content deploys are automated; the GitHub Actions role can write to the bucket and
+invalidate the distribution, and nothing else. The first deploy is necessarily by hand because the role the
+workflow assumes is created *by* `CicdStack`, and because the account was never bootstrapped
+(`cdk bootstrap aws://593793064239/us-east-1` comes first).
+
 **Known rough edges in the scaffolding** (not blockers):
-`api/package.json`'s dev script points at `local/server.ts`, which does not exist; the root `deploy`
-script is `node -r dotenv/config cdk deploy --all`, which will not resolve the `cdk` binary as written; and
-there is no deploy pipeline yet — `web/dist` has never been uploaded anywhere.
+`api/package.json`'s dev script points at `local/server.ts`, which does not exist. Two that *were* rough edges
+are now fixed: `infra/package.json`'s `deploy` script (it was `node -r dotenv/config cdk deploy --all`, which
+made Node try to execute a file named `cdk`), and `infra/tsconfig.json`'s `typeRoots` override, which pointed at
+`infra/node_modules/@types` while npm workspaces hoists `@types/node` to the repo root — that made `npx tsc` fail
+and therefore broke every `cdk synth`/`diff`/`deploy`.
 
 ---
 
@@ -330,12 +364,24 @@ is done. What replaces it:
 
 **The open work now sits outside `web/`.** In rough priority order:
 
-1. **CloudFront + S3 for real** — the SPA rewrite (§4) is a hard dependency of the routing decision, and
-   nothing has been deployed yet.
-2. **The missing public assets** — `web/index.html` already references `/favicon.ico`,
-   `/apple-touch-icon.png`, `/site.webmanifest` and `/og-image.png`, none of which exist. They 404 today.
+1. **Deploy `WebStack` + `CicdStack`.** The code is written, synthesized and diffed (§4); nothing is deployed. The
+   ordering is load-bearing: `cdk bootstrap aws://593793064239/us-east-1` first (the account has no `CDKToolkit`),
+   then `cdk deploy WebStack CicdStack`, then trigger `deploy-web.yml` via `workflow_dispatch` to fill the bucket.
+   Commit the `infra/cdk.context.json` the deploy produces.
+2. **An OG image.** `web/index.html` no longer references `/favicon.ico`, `/apple-touch-icon.png`,
+   `/site.webmanifest` or `/og-image.png` — those links were deleted rather than left pointing at files that do not
+   exist, because the 403→`/index.html`@200 rewrite turns each into a 200 `text/html` response that browsers cannot
+   sniff (the managed security-headers policy sends `nosniff`). Adding `web/public/og-image.png` (1200×630) and
+   restoring the `og:image` metas plus `twitter:card: summary_large_image` is the highest-value follow-up; social
+   previews are currently text-only. `robots.txt` and `sitemap.xml` are absent for the same reason.
 3. **A real portrait, and a redacted résumé PDF** (§5.2, §5.3).
 4. **Phase 1 finishing touches** — preloader, hero role typer, `sitemap.xml`, a Lighthouse pass. Tracked as
    M7/M8 in the UI plan and listed in `WEB_APP_CONTEXT.md` §13.
-5. **Then Phase 2**: the Bedrock RAG chat panel. The sequencing constraint in §1 is satisfied — Phase 1 is
-   implemented, so the chat design is now unblocked. `api/` and all three CDK stacks are still empty.
+5. **An S3 lifecycle rule on the `assets/` prefix.** The deploy workflow deliberately does not `--delete` hashed
+   assets (a visitor still running the previous `index.html` would 404 on the lazily imported EmailJS chunk), so
+   superseded builds accumulate at ~370 KB each. Negligible cost, but expiry belongs in `WebStack`, not in CI.
+6. **The EmailJS repository Variables** (`VITE_EMAILJS_SERVICE_ID`, `_TEMPLATE_ID`, `_PUBLIC_KEY`) do not exist yet.
+   Their absence is a *soft* failure — the contact form degrades and the build stays green — so the first deploys
+   will silently ship a non-functional form.
+7. **Then Phase 2**: the Bedrock RAG chat panel. The sequencing constraint in §1 is satisfied — Phase 1 is
+   implemented, so the chat design is now unblocked. `api/`, `DataStack` and `SyncStack` are still empty.
