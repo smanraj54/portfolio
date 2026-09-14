@@ -30,7 +30,24 @@ export interface CollapsibleProps {
   /** Always-visible trigger content. */
   summary: ReactNode
   children: ReactNode
+  /** The starting state, for the uncontrolled mode. Ignored when `open` is set. */
   defaultOpen?: boolean
+  /**
+   * Controlled state. When it is passed, it *is* the open state: the trigger
+   * stops holding one and only reports what the visitor asked for, through
+   * `onOpenChange`.
+   *
+   * That is what lets the timeline hand a row to the scroll position
+   * (`lib/reveal.ts`) without this component learning anything about geometry —
+   * and it stays optional because a disclosure that only works when someone else
+   * holds its state is the worse primitive.
+   */
+  open?: boolean
+  /**
+   * The state the visitor just asked for. Fires in both modes, so a caller can
+   * observe the toggle without taking ownership of it.
+   */
+  onOpenChange?: (open: boolean) => void
   /**
    * What pressing the trigger does, e.g. "show details". It is appended to the
    * visible `summary` text rather than replacing it, so the accessible name
@@ -46,12 +63,26 @@ export function Collapsible({
   summary,
   children,
   defaultOpen = false,
+  open: controlledOpen,
+  onOpenChange,
   label,
   className,
 }: CollapsibleProps) {
-  // Uncontrolled on purpose: no caller needs to drive or observe open state
-  // yet, and an `open` prop would have to be kept honest by every one of them.
-  const [open, setOpen] = useState(defaultOpen)
+  const [uncontrolledOpen, setUncontrolledOpen] = useState(defaultOpen)
+
+  // `undefined` is the whole test for which mode this is, so a caller that
+  // passes `open={condition && x}` gets the mode it asked for rather than a
+  // silent fall back to the internal state.
+  const isControlled = controlledOpen !== undefined
+  const open = isControlled ? controlledOpen : uncontrolledOpen
+
+  function toggle() {
+    // The internal state is deliberately left stale in controlled mode rather
+    // than kept in sync alongside the prop: two sources of truth that agree
+    // today are two that can disagree later, and only one of them is rendered.
+    if (!isControlled) setUncontrolledOpen(!open)
+    onOpenChange?.(!open)
+  }
 
   // Derived from `id`, which the caller already guarantees is stable and unique
   // (the panel uses it bare), so the name needs no generated id of its own.
@@ -79,7 +110,7 @@ export function Collapsible({
         aria-controls={id}
         // No key handlers: a real <button> already answers Enter and Space, and
         // adding them would only be a second, divergent implementation of that.
-        onClick={() => setOpen((wasOpen) => !wasOpen)}
+        onClick={toggle}
         /**
          * `min-h-9` (36px) is the same floor IconButton's labelled variant
          * uses, and for the same reason: with no height of its own this row is

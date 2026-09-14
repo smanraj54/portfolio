@@ -20,6 +20,18 @@
  *    reached. Framing, tags and metrics stay visible, so a collapsed row still
  *    says what the project was and what it moved.
  *
+ *    Collapsed, but not waiting for a click: each row is handed to
+ *    `useScrollReveal`, which opens it as it reaches the part of the screen a
+ *    visitor is reading. So the section is still scannable at rest and still one
+ *    row per project, but reading it top to bottom takes no clicks at all. The
+ *    trigger keeps working, and a visitor who uses it wins for as long as the row
+ *    is on screen.
+ *
+ *    Rows do not close themselves on the way out through the top — a panel that
+ *    collapses above the fold pulls the page up under the reader. A row resets
+ *    once it is off the bottom of the screen instead, where nothing that moves is
+ *    visible. lib/reveal.ts carries the argument.
+ *
  * 3. `now` is read once, here, and threaded into every <DateBadge>. A per-row
  *    `nowYearMonth()` would let a single render straddle a month boundary and
  *    print two open-ended tenures measured against different presents.
@@ -36,6 +48,7 @@ import { DateBadge } from '@/components/ui/DateBadge'
 import { Tag } from '@/components/ui/Tag'
 import { byNewestFirst, byOldestFirst, nowYearMonth } from '@/lib/dates'
 import { Icon } from '@/lib/icons'
+import { useScrollReveal } from '@/lib/reveal'
 import { RichText } from '@/lib/richtext'
 import type { ReactNode } from 'react'
 import type {
@@ -196,9 +209,23 @@ function ProjectRow({
   level: HeadingLevel
 }) {
   const metrics = project.metrics ?? []
+  const hasBullets = project.bullets.length > 0
+
+  // The row, not the disclosure, is what the observer watches — the whole
+  // geometry argument is in lib/reveal.ts. Called unconditionally, as hooks must
+  // be, and told to sit out for a project with no bullets to reveal.
+  //
+  // Destructured rather than kept as one object: `react-hooks/refs` reads a
+  // property access on anything holding a ref as a render-time ref read, and it
+  // is right to — the rule cannot know this one is a callback ref that is only
+  // ever handed to React.
+  const { ref, open, onOpenChange } = useScrollReveal({
+    enabled: hasBullets,
+    panelId: project.id,
+  })
 
   return (
-    <li className="py-3">
+    <li ref={ref} className="py-3">
       <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
         <Heading level={level} className="text-sm">
           {project.name}
@@ -212,12 +239,17 @@ function ProjectRow({
 
       {project.tags.length > 0 && <TagList tags={project.tags} />}
 
-      {project.bullets.length > 0 && (
+      {hasBullets && (
         <Collapsible
           // `ProjectItem.id` is unique site-wide and asserted to be so
           // (content/sections.test.ts), so the panel needs no generated id.
           id={project.id}
           className="mt-1"
+          // Controlled, so the scroll position and the trigger are the same
+          // state rather than two that can disagree — a row the visitor closed
+          // stays closed until it leaves the band.
+          open={open}
+          onOpenChange={onOpenChange}
           summary={<span className="font-mono text-xs text-muted">Highlights</span>}
           // The visible word is the same on every row, so the hidden half of
           // the name carries the project: nine buttons all called "Highlights

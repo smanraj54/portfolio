@@ -1,6 +1,6 @@
 import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it, vi } from 'vitest'
 import { Collapsible } from './Collapsible'
 
 /**
@@ -146,6 +146,27 @@ describe('<Collapsible>', () => {
     expect(second).toHaveAttribute('aria-expanded', 'false')
   })
 
+  it('reports the state the visitor asked for while still holding it itself', async () => {
+    // A caller may watch the toggle without taking it over, which is what keeps
+    // the uncontrolled mode useful to a caller that also wants to react to it.
+    const user = userEvent.setup()
+    const onOpenChange = vi.fn()
+    render(
+      <Collapsible id="a" label="show details" summary="First" onOpenChange={onOpenChange}>
+        <p>one</p>
+      </Collapsible>,
+    )
+
+    const trigger = screen.getByRole('button')
+    await user.click(trigger)
+    expect(onOpenChange).toHaveBeenLastCalledWith(true)
+    expect(trigger).toHaveAttribute('aria-expanded', 'true')
+
+    await user.click(trigger)
+    expect(onOpenChange).toHaveBeenLastCalledWith(false)
+    expect(trigger).toHaveAttribute('aria-expanded', 'false')
+  })
+
   it('appends `className` to the root last so a caller can override', () => {
     const { container } = setup({ className: 'mt-4' })
     const root = container.firstElementChild
@@ -153,5 +174,78 @@ describe('<Collapsible>', () => {
     // Last token, so the day the root gains base classes a caller's utility
     // still wins on equal specificity rather than losing to source order.
     expect(root?.className.trim().split(/\s+/).at(-1)).toBe('mt-4')
+  })
+})
+
+/**
+ * Controlled mode, which is how the timeline hands a row to the scroll position
+ * (lib/reveal.ts). The cases that matter are all about the component *not*
+ * having an opinion of its own once `open` is passed.
+ */
+describe('<Collapsible> controlled', () => {
+  function setupControlled(open: boolean) {
+    const onOpenChange = vi.fn()
+    const view = render(
+      <Collapsible
+        id="proj-1"
+        label="show details"
+        summary="Keyword search revamp"
+        // Deliberately contradicted by `open`: the prop must win, or a row the
+        // scroll position has closed would render open on its first paint.
+        defaultOpen={!open}
+        open={open}
+        onOpenChange={onOpenChange}
+      >
+        <p>bullets</p>
+      </Collapsible>,
+    )
+    return { ...view, onOpenChange, trigger: screen.getByRole('button') }
+  }
+
+  it('renders the prop rather than its own state', () => {
+    const { trigger } = setupControlled(true)
+    expect(trigger).toHaveAttribute('aria-expanded', 'true')
+    expect(document.getElementById('proj-1')).not.toHaveAttribute('inert')
+  })
+
+  it('ignores `defaultOpen` when it is controlled', () => {
+    const { trigger } = setupControlled(false)
+    expect(trigger).toHaveAttribute('aria-expanded', 'false')
+  })
+
+  it('asks rather than acts, so the caller stays the only source of truth', async () => {
+    // Nothing moves on the click: the panel is still closed until the owner of
+    // the state says otherwise. A component that also flipped an internal flag
+    // would render the caller's next `open={false}` as a fight.
+    const user = userEvent.setup()
+    const { trigger, onOpenChange } = setupControlled(false)
+
+    await user.click(trigger)
+
+    expect(onOpenChange).toHaveBeenCalledExactlyOnceWith(true)
+    expect(trigger).toHaveAttribute('aria-expanded', 'false')
+  })
+
+  it('asks to close when it is already open', async () => {
+    const user = userEvent.setup()
+    const { trigger, onOpenChange } = setupControlled(true)
+
+    await user.click(trigger)
+
+    expect(onOpenChange).toHaveBeenCalledExactlyOnceWith(false)
+    expect(trigger).toHaveAttribute('aria-expanded', 'true')
+  })
+
+  it('follows the prop when the caller changes it', () => {
+    const { rerender, trigger } = setupControlled(false)
+
+    rerender(
+      <Collapsible id="proj-1" label="show details" summary="Keyword search revamp" open>
+        <p>bullets</p>
+      </Collapsible>,
+    )
+
+    expect(trigger).toHaveAttribute('aria-expanded', 'true')
+    expect(document.getElementById('proj-1')).not.toHaveAttribute('inert')
   })
 })

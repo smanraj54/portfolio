@@ -23,10 +23,10 @@ Measured, not estimated:
 
 | Check | Command | Result |
 |---|---|---|
-| Types + build | `npm run build --workspace=web` | passes (`tsc -b` then `vite build`, ~1937 modules) |
+| Types + build | `npm run build --workspace=web` | passes (`tsc -b` then `vite build`, ~1938 modules) |
 | Lint | `npm run lint --workspace=web` | clean, zero warnings |
-| Tests | `npm run test --workspace=web` | **455 passing, 25 files** |
-| Bundle | `vite build` output | `index.js` 333.47 kB / **107.87 kB gzip**; `index.css` 34.45 kB / 7.50 kB gzip; `es.js` (EmailJS, lazy) 3.48 kB / 1.48 kB gzip; `index.html` 5.09 kB |
+| Tests | `npm run test --workspace=web` | **495 passing, 26 files** |
+| Bundle | `vite build` output | `index.js` 334.54 kB / **108.29 kB gzip**; `index.css` 34.45 kB / 7.50 kB gzip; `es.js` (EmailJS, lazy) 3.48 kB / 1.48 kB gzip; `index.html` 5.44 kB |
 
 Against the UI plan's milestone list (§9 there): **M1–M6 are done.** M7 (preloader, role typer, toggle
 animation) and most of M8 (favicon set, sitemap, Lighthouse pass) are not — see §13 for the exact remainder.
@@ -124,7 +124,7 @@ web/
     ├── vite-env.d.ts       # typed ImportMetaEnv
     ├── types/content.ts    # THE content contract
     ├── content/            # profile + one file per section + the section registry
-    ├── lib/                # pure logic, zero React state (except RichText/Icon views)
+    ├── lib/                # pure logic + two hooks (media, reveal); no other React state
     ├── providers/          # Viewport, Theme, Navigation
     ├── components/
     │   ├── ui/             # 8 primitives
@@ -132,7 +132,7 @@ web/
     │   └── articles/       # one renderer per article kind + the dispatcher
     ├── styles/theme.css    # fonts, tokens, palettes, base layer, section state machine
     ├── styles/theme.node.test.ts   # asserts CSS ↔ TS ↔ index.html agree
-    ├── test/setup.ts       # jsdom shims + setMatchMedia
+    ├── test/               # setup.ts (jsdom shims, setMatchMedia) + intersection.ts (a fake observer)
     └── assets/             # hero.png, react.svg, vite.svg — stock leftovers, unreferenced
 ```
 
@@ -147,7 +147,7 @@ types/content.ts        the shape of all content
       ↑
 content/*.ts            the actual words — compiled in as typed TS modules, never fetched
       ↑
-lib/*                   pure functions and state machines. No React state. No DOM ownership.
+lib/*                   pure functions and state machines. Two hooks, no other React state.
       ↑
 providers/*             the three pieces of global state, each backed by a lib machine
       ↑
@@ -162,8 +162,13 @@ Two conventions carry most of the weight:
 
 **Logic is pure and lives in `lib/`; scheduling lives in the provider.** `lib/transition.ts` and
 `lib/contactForm.ts` are reducers that hold no timers and touch no DOM. The provider (or component) above them
-owns `requestAnimationFrame`, `setTimeout` and focus. That is why 53 of the 455 tests can drive both machines
+owns `requestAnimationFrame`, `setTimeout` and focus. That is why 53 of the 500 tests can drive both machines
 directly with no fake clocks and no rendering.
+
+The two exceptions are hooks, and each subscribes to exactly one browser API and owns nothing else:
+`media.ts` (`matchMedia`) and `reveal.ts` (`IntersectionObserver`). Both sit here rather than beside their
+caller because what they hold is a rule with its own thresholds and its own tests, not markup — and both
+export those thresholds as plain functions, so the geometry is testable without rendering anything.
 
 **Content is compiled, not fetched.** A missing or misspelled field is a build error, not a blank card at
 runtime, and there are zero data round-trips at load.
@@ -183,6 +188,7 @@ runtime, and there are zero data round-trips at load.
 | `head.ts` | per-route `document.title` / description / OG / Twitter / canonical, all upserted in place |
 | `site.ts` | `SITE_ORIGIN`, titles, `absoluteUrl()` |
 | `media.ts` | `useMediaQuery` via `useSyncExternalStore`, and the three `QUERY` strings |
+| `reveal.ts` | `useScrollReveal` — the two root margins, the band constants and `dragsTheReader`, the rule that keeps scroll-driven highlights from moving the page (§7.7) |
 | `storage.ts` | `localStorage` that cannot throw (Safari private mode throws on *access*) |
 | `dom.ts` | `sectionDomId()` — the one string three components must agree on |
 | `result.ts` | `Result<T, E>`, so transports report failure as a value |
@@ -394,6 +400,61 @@ canonical link, **upserting in place** so five navigations leave exactly the tag
 `og:image` is intentionally never touched. The attribute distinction (`property` for OG, `name` for Twitter) is
 load-bearing: get it wrong and you append a second conflicting tag rather than updating the first.
 
+### 7.7 Scroll-driven highlights
+
+A project's collapsed bullets open themselves as the row reaches the part of the screen a visitor is reading.
+`lib/reveal.ts` owns it; `ArticleTimeline`'s `ProjectRow` hands its `<li>` to `useScrollReveal` and passes the
+result to `<Collapsible>` as `open` / `onOpenChange`. The click still works and still wins.
+
+**The invariant: no row ever changes height at or above the line the visitor is reading.** Everything else
+follows from it. It is not a preference — a panel collapsing above the fold shortens the page above the eye and
+yanks it upward mid-scroll, which reads as a bug and loses the reader's place.
+
+Two IntersectionObservers per row, both with the viewport as root, because a root margin describes one region
+and the two edges that matter are not each other's mirror:
+
+| Region | `rootMargin` | Event | Effect |
+|---|---|---|---|
+| the band, 5%–70% of the window | `-5% 0px -30% 0px` | overlaps it | open |
+| the screen, 5%–100% | `-5% 0px 0px 0px` | *leaves* it | close, if it left by the bottom |
+
+Between 70% and the fold is a **hold zone**: on screen, past the band, state unchanged. That is the reason for
+the second observer. Opening one row pushes the rows below it down, and on a tall window three rows sit in the
+band at once — with a single region the lowest would be shoved past 70% by the two above it and fold straight
+back up in the next frame.
+
+The regions nest (same top edge, and the band ends above the fold), so the two observers cannot contradict each
+other in a frame: one only ever writes `true`, the other only ever `false`.
+
+Four consequences worth knowing before touching it:
+
+- **The reveal is one-way.** A row that leaves through the top **stays open**; it resets only once it has passed
+  the fold, where nothing that moves is on screen. So reading down, rows open ahead of the eye and stay open
+  behind it, and scrolling back up shows the rows already expanded — the right way round, since those are the
+  ones already read. The section's first impression is unaffected: every row still starts closed.
+- **The row is observed, not the disclosure.** The panel is the row's last child, so the row's bottom edge *is*
+  the panel's and "past the fold" means the highlights themselves are out of sight, while 70% fires against the
+  row's top while the bullets are still below the fold — so they are already open when the eye arrives rather
+  than unfolding under it. `dragsTheReader(row, region)` is the invariant in code and gates every write; the one
+  exemption is a row's first appearance — at mount, or when a pane goes from `content-visibility: hidden` to on
+  stage — where nobody has scrolled and there is nothing to drag.
+- **A click pins the row** for as long as it is on screen, so it never springs back on the next crossing; the
+  pin expires at whichever edge the row leaves by, which is also the only way a row closed by hand reopens
+  itself.
+- **Reduced motion turns it off entirely** and the disclosures are plain click targets again (§5.2 rule 4:
+  remove the motion, do not shorten it). A row with no bullets is never observed at all.
+
+This was first built with a close at the top edge, leaning on browser scroll anchoring to absorb the reflow. It
+jumped anyway: `<Collapsible>` animates `grid-template-rows` over 300 ms, so the height above the viewport
+shrinks every frame while a composited scroll is in flight and the compensation does not keep up — and WebKit has
+no anchoring at all (`overflow-anchor` is not Baseline). Writing `scrollTop` by hand is worse; the write lands
+mid-fling, where it is dropped or kills the momentum. Hence one behaviour on every engine, and no feature
+detection.
+
+A closed panel that holds the focus is never closed under the visitor — `inert` over the focused element ejects
+focus to `<body>`. Only the panel is guarded, not the row: a mouse click leaves focus on the trigger, and
+guarding that would pin the last row clicked for the rest of the visit.
+
 ---
 
 ## 8. Design system
@@ -486,7 +547,9 @@ These are the rules the code is built around. Breaking one is a regression even 
    `position: static` and fight the visible state's `absolute`), targeting whichever pane is on stage.
 9. Hit targets: the sidebar's contact rows use `py-1` to reach 28 px (SC 2.5.8), tab bar items clear 44 px.
 10. `<Collapsible>` is a `<button aria-expanded aria-controls>` + panel, not `<details>` — `<details>` cannot
-    animate its height and its accessible name is scraped unreliably from a rich `<summary>`.
+    animate its height and its accessible name is scraped unreliably from a rich `<summary>`. It works
+    uncontrolled *or* controlled (`open` + `onOpenChange`, which ignores `defaultOpen` and never flips a flag of
+    its own), which is how the scroll position drives it in §7.7 without ever disagreeing with the trigger.
 11. Every nav landmark on screen has a **unique accessible name** ("Sections" for the navbar/tab bar, "Sidebar
     sections" for the sidebar's stack). Duplicating the destinations is fine; duplicating the name is not.
 
@@ -500,13 +563,13 @@ by anything else.
 
 ## 11. Testing
 
-455 tests in 25 files, co-located beside the code they cover. Rough distribution:
+495 tests in 26 files, co-located beside the code they cover. Rough distribution:
 
 | Area | Tests | What is actually pinned |
 |---|---|---|
-| `lib/` machines (`contactForm` 34, `contact` 27, `dates` 30, `richtext` 19, `transition` 19, `head` 7) | 136 | reducer transitions, reference equality, validation, month arithmetic, token parsing, tag upserts |
-| `components/articles/` (6 files) | 134 | rendering per article kind, timeline ordering + disclosure, form a11y wiring and every failure path |
-| `components/ui/` (8 files) | 120 | naming rules, variants, the `className`-vs-Tailwind-order trap |
+| `lib/` machines (`contactForm` 34, `dates` 30, `reveal` 29, `contact` 27, `richtext` 19, `transition` 19, `head` 7) | 165 | reducer transitions, reference equality, validation, month arithmetic, token parsing, tag upserts, the reveal band's geometry and which reflows it refuses |
+| `components/articles/` (7 files) | 139 | rendering per article kind, timeline ordering + disclosure, form a11y wiring and every failure path |
+| `components/ui/` (8 files) | 126 | naming rules, variants, controlled vs uncontrolled disclosure, the `className`-vs-Tailwind-order trap |
 | `content/sections.test.ts` | 25 | the registry's own invariants — id pattern, exactly one `/`, path uniqueness |
 | `components/shell/` (`AppShell` 19, `SectionStage` 4) | 23 | shell branch per breakpoint, unique landmark names, the sidebar↔navbar link, stage wiring |
 | `styles/theme.node.test.ts` | 17 | **cross-file drift**: CSS timings vs TS constants, `@theme static`, z-index order, both palettes having the same variables, `theme-color` vs palette, absolute URLs vs `SITE_ORIGIN`, that the preloaded font file exists |
@@ -519,7 +582,15 @@ a rendered test. That is the gap to close first if this area regresses.
 
 `test/setup.ts` installs what jsdom lacks — `matchMedia` (with a `setMatchMedia` helper so a test can flip
 `prefers-reduced-motion`), `ResizeObserver` and `IntersectionObserver` — and runs `cleanup()` plus
-`vi.useRealTimers()` after each test.
+`vi.useRealTimers()` after each test. Its observer is a deliberate **no-op**: every component using one has to
+treat "never intersected" as a valid state, and nothing that renders should depend on a crossing arriving.
+
+`test/intersection.ts` is the other half, for the files that need to *be* the layout engine: a fake observer
+that records what was watched and lets a test deliver a crossing with geometry it chose (`stubIntersectionObserver`
+in `beforeEach`, `vi.unstubAllGlobals()` in `afterEach`). A crossing is addressed by root margin as well as by
+target, because §7.7 gives each row two observers, and delivering an event to the wrong region would pass or fail
+for a reason the test never stated. jsdom computes no layout, so the rects are the test's own fiction — which is
+why the thresholds in `reveal.ts` are exported as functions over a rect rather than hidden inside the callback.
 
 `theme.node.test.ts` is the odd one out: it reads `theme.css` and `index.html` off disk with `node:fs`, because
 what it checks is the *source*, not any rendered output. Vitest runs test files in Node regardless of
@@ -567,7 +638,13 @@ for why `ArticleSkills` renders type weight instead of bars. Keep or delete on p
 
 **Stock leftovers, unreferenced:** `src/assets/{hero.png,react.svg,vite.svg}` and `public/icons.svg`.
 
-**Deferred by design:** no spam defence beyond the EmailJS allow-list (§7.5); the bundle exceeds the 250 kB
+**Deferred by design:** a scroll-revealed row never re-collapses on the way out through the top, only once it
+has passed the fold, so a long role read top to bottom ends with every row it passed still expanded (§7.7).
+That is the price of the no-jump invariant, and it was paid on purpose. Tidying up behind an *upward* scroll
+would be free of reflow above the reader, but distinguishing "the visitor scrolled up" from "a sibling above
+grew" needs the scroll offset, and that is machinery for a small win. The band's numbers are asserted only
+against fabricated rects in jsdom — jsdom computes no layout — so how they feel belongs in the same in-browser
+pass as Lighthouse above. No spam defence beyond the EmailJS allow-list (§7.5); the bundle exceeds the 250 kB
 tripwire (§1); `/blog`-style unknown URLs are corrected client-side rather than answered with a real 404. The
 latter is now a deliberate end state, not a gap: `infra/lib/web-stack.ts` maps 403/404 to `/index.html` at 200, so
 every unknown path is a soft 404 by construction. Real 404s would need `cloudfront.AccessLevel.LIST` on the origin
@@ -617,6 +694,13 @@ if you do one.
 
 **Change the breakpoint:** `MOBILE_MAX_WIDTH` in `lib/media.ts` is the complement of Tailwind's `md`; the `md:`
 utilities inside `Section` and `AppShell` assume they land on the same pixel.
+
+**Retune the reveal band:** `REVEAL_BAND` in `lib/reveal.ts`. Both lines are measured from the top of the
+window, so a bigger `openAt` sits lower and opens rows earlier as they rise into view, while `goneAt` only marks
+where a row counts as gone — the pin expiring, not a collapse. Keep them whole percentages (the margin
+arithmetic prints them verbatim) and keep `openAt` well clear of 100, or the hold zone that stops a pushed-down
+row folding back disappears. Three tests in `reveal.test.tsx` state the numbers on purpose, so retuning is a
+deliberate edit rather than drift.
 
 **Add a provider:** add its hook name to the `react-refresh/only-export-components` allow-list in
 `eslint.config.js`. That speed bump is intentional.

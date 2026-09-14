@@ -1,9 +1,18 @@
 import { render, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { ArticleTimeline } from './ArticleTimeline'
 import { educationArticles } from '@/content/education'
 import { experienceArticles, roles } from '@/content/experience'
+import { bandRootMargin, screenRootMargin } from '@/lib/reveal'
+import {
+  crossing,
+  observerFor,
+  observers,
+  rect,
+  scrollTo,
+  stubIntersectionObserver,
+} from '@/test/intersection'
 import type { Article, ArticleOf, ProjectItem, TimelineItem } from '@/types/content'
 
 /* -------------------------------------------------------------------------- */
@@ -424,6 +433,96 @@ describe('<ArticleTimeline> projects', () => {
 
     expect(screen.queryByRole('link')).toBeNull()
     expect(document.body.textContent).not.toContain('keyword-search-revamp')
+  })
+})
+
+/**
+ * The scroll-driven half of the disclosure. The band's own rules are
+ * lib/reveal.test.tsx's subject; what only this file can assert is the wiring —
+ * which element the observer is pointed at, and that a crossing reaches the
+ * right project's panel and no other.
+ */
+describe('<ArticleTimeline> scroll-driven highlights', () => {
+  beforeEach(stubIntersectionObserver)
+  afterEach(() => vi.unstubAllGlobals())
+
+  const twoProjects = makeArticle([
+    makeItem({
+      projects: [makeProject(), makeProject({ id: 'project-search', name: 'Global Search' })],
+    }),
+  ])
+
+  it('watches the project row, not the disclosure inside it', () => {
+    // The row is what makes the thresholds mean anything: the panel is its last
+    // child, so the row's bottom edge is the panel's, and its top edge is above
+    // the fold long before the bullets are.
+    render(<ArticleTimeline article={twoProjects} />)
+
+    const rows = [cardFor('Ledger rewrite', 3), cardFor('Global Search', 3)]
+    // One observer per row per region — `observerFor` throws if either is
+    // missing — and nothing else in the card watched at all.
+    expect(observers()).toHaveLength(rows.length * 2)
+    for (const projectRow of rows) {
+      expect(observerFor(projectRow, bandRootMargin()).targets).toEqual([projectRow])
+      expect(observerFor(projectRow, screenRootMargin()).targets).toEqual([projectRow])
+    }
+  })
+
+  it('opens the highlights of the row that reached the band, and only that one', () => {
+    render(<ArticleTimeline article={twoProjects} />)
+
+    scrollTo(bandRootMargin(), crossing(cardFor('Ledger rewrite', 3), true))
+
+    expect(screen.getByRole('button', { name: /Ledger rewrite/ })).toHaveAttribute(
+      'aria-expanded',
+      'true',
+    )
+    expect(document.getElementById('project-ledger')).not.toHaveAttribute('inert')
+    expect(screen.getByRole('button', { name: /Global Search/ })).toHaveAttribute(
+      'aria-expanded',
+      'false',
+    )
+  })
+
+  it('closes them again once the row has left by the bottom of the screen', () => {
+    // The default crossing geometry is a row below the line, which for the
+    // closing observer is a row past the fold — the one exit where collapsing
+    // moves nothing that is on screen.
+    render(<ArticleTimeline article={twoProjects} />)
+    const card = cardFor('Ledger rewrite', 3)
+
+    scrollTo(bandRootMargin(), crossing(card, true))
+    scrollTo(screenRootMargin(), crossing(card, false))
+
+    expect(screen.getByRole('button', { name: /Ledger rewrite/ })).toHaveAttribute(
+      'aria-expanded',
+      'false',
+    )
+    expect(document.getElementById('project-ledger')).toHaveAttribute('inert')
+  })
+
+  it('leaves a row that has scrolled off the top expanded', () => {
+    // Collapsing it there would shorten the page above the visitor's eye and
+    // pull what they are reading upward. Nobody is looking at a row above the
+    // fold, so leaving it open costs nothing.
+    render(<ArticleTimeline article={twoProjects} />)
+    const card = cardFor('Ledger rewrite', 3)
+
+    scrollTo(bandRootMargin(), crossing(card, true))
+    scrollTo(screenRootMargin(), crossing(card, false, { target: rect(-400, -10) }))
+
+    expect(screen.getByRole('button', { name: /Ledger rewrite/ })).toHaveAttribute(
+      'aria-expanded',
+      'true',
+    )
+    expect(document.getElementById('project-ledger')).not.toHaveAttribute('inert')
+  })
+
+  it('leaves a project with no bullets unobserved', () => {
+    // There is no disclosure on that row, so there is nothing for a crossing to
+    // do but cost a callback per frame.
+    render(<ArticleTimeline article={makeArticle([makeItem({ projects: [makeProject({ bullets: [] })] })])} />)
+    expect(observers()).toHaveLength(0)
   })
 })
 
