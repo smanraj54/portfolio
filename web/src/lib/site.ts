@@ -11,7 +11,7 @@
  * must be updated in the same change. A test asserts the two agree.
  */
 
-const DEFAULT_ORIGIN = 'https://manrajsingh.dev'
+const DEFAULT_ORIGIN = 'https://manrajsingh.ca'
 
 /** No trailing slash, so `${SITE_ORIGIN}${path}` is always well-formed. */
 export const SITE_ORIGIN: string = (

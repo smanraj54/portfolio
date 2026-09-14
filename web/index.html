@@ -40,16 +40,22 @@
       Absolute URLs below must match VITE_SITE_ORIGIN in web/.env — index.html
       cannot read import.meta.env. A test asserts the two agree.
     -->
-    <link rel="canonical" href="https://manrajsingh.dev/" />
+    <link rel="canonical" href="https://manrajsingh.ca/" />
 
     <meta name="theme-color" content="#0c0c0c" media="(prefers-color-scheme: dark)" />
     <meta name="theme-color" content="#edf1f3" media="(prefers-color-scheme: light)" />
     <meta name="color-scheme" content="dark light" />
 
+    <!--
+      SVG only, deliberately. There is no favicon.ico / apple-touch-icon.png /
+      site.webmanifest in web/public, and CloudFront rewrites 403 and 404 to
+      /index.html with a 200 — so a reference to a file that does not exist
+      resolves to an HTML document rather than failing. The security headers
+      policy sends X-Content-Type-Options: nosniff, so nothing can recover from
+      that: the icon silently does not render and the manifest raises a parse
+      error. Add the file before adding the link back.
+    -->
     <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
-    <link rel="icon" href="/favicon.ico" sizes="32x32" />
-    <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
-    <link rel="manifest" href="/site.webmanifest" />
 
     <!-- Body face only. The display and mono faces are not on the LCP path. -->
     <link
@@ -68,24 +74,23 @@
       property="og:description"
       content="Backend and distributed systems, including 3.5 years at Amazon. Cloud architecture on AWS, real-time protocol design, and retrieval-augmented generation."
     />
-    <meta property="og:url" content="https://manrajsingh.dev/" />
-    <meta property="og:image" content="https://manrajsingh.dev/og-image.png" />
-    <meta property="og:image:width" content="1200" />
-    <meta property="og:image:height" content="630" />
-    <meta
-      property="og:image:alt"
-      content="Manraj Singh — Senior Software Engineer"
-    />
+    <meta property="og:url" content="https://manrajsingh.ca/" />
+    <!--
+      No og:image: /og-image.png does not exist, and promising one that answers
+      200 text/html is worse than promising none — crawlers cache the failure.
+      Add web/public/og-image.png (1200×630), then restore the og:image,
+      og:image:width, og:image:height and og:image:alt metas and switch
+      twitter:card back to summary_large_image.
+    -->
     <meta property="og:locale" content="en_CA" />
 
     <!-- Twitter -->
-    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:card" content="summary" />
     <meta name="twitter:title" content="Manraj Singh — Senior Software Engineer" />
     <meta
       name="twitter:description"
       content="Backend and distributed systems, including 3.5 years at Amazon. Cloud architecture on AWS, real-time protocol design, and retrieval-augmented generation."
     />
-    <meta name="twitter:image" content="https://manrajsingh.dev/og-image.png" />
 
     <script type="application/ld+json">
       {
@@ -93,7 +98,7 @@
         "@type": "Person",
         "name": "Manraj Singh",
         "jobTitle": "Senior Software Engineer",
-        "url": "https://manrajsingh.dev/",
+        "url": "https://manrajsingh.ca/",
         "email": "mailto:smanraj54@gmail.com",
         "telephone": "+1-902-412-9128",
         "address": {
