@@ -2,20 +2,27 @@
  * <ArticleSkills> — the `skills` article (§6.4).
  *
  * A row is a name, a year count and one of four proficiency words:
- * "Java · 6 yrs · Advanced". There is no bar, no percentage and no fill of any
+ * "Java · 7 yrs · Advanced". There is no bar, no percentage and no fill of any
  * kind here, which is why <ProgressBar> stays unimported even though it was
  * built for this section. A bar needs a denominator and this data has none:
- * content/skills.ts derives every `years` value from the role timeline, so each
- * number can be defended line by line, while a full-scale maximum would have to
- * be invented purely to have something to draw a width against. Once invented,
- * the width is what a visitor compares — and the defensible number stops
- * mattering. The four levels earn their visual weight from type instead
- * (LEVEL_CLASSES), which costs nothing and claims nothing.
+ * every `years` value in content/skills.ts is a claim about a real span that can
+ * be asked about line by line, while a full-scale maximum would have to be
+ * invented purely to have something to draw a width against. Once invented, the
+ * width is what a visitor compares — and the defensible number stops mattering.
+ * The four levels earn their visual weight from type instead (LEVEL_CLASSES),
+ * which costs nothing and claims nothing.
  *
- * Layout is one column on a phone and a grid of group cards from `lg`. Seven
+ * Layout is one column on a phone and a grid of group cards from `lg`. Eight
  * groups of three-word rows stacked in a single column would leave most of a
  * 1300px pane empty and put the last group two screens below the first.
+ *
+ * A group may set `wide`, which is the answer to one group holding 21 rows
+ * against a 6-11 median: left alone it stretches its grid row and leaves a void
+ * beside its neighbour. A wide group takes two columns of the outer grid and
+ * splits its own rows into two internal columns, so it comes out roughly as tall
+ * as the cards around it.
  */
+import clsx from 'clsx'
 import { formatDuration } from '@/lib/dates'
 import { Icon } from '@/lib/icons'
 import { RichText } from '@/lib/richtext'
@@ -48,9 +55,8 @@ function SkillRow({ skill }: { skill: Skill }) {
    * `${years} yrs`. Two reasons: `years` is a plain number, so 1 is reachable
    * and must read "1 yr", and a fractional value is expressible in the type
    * even though today's content has none — 1.5 becomes "1 yr 6 mos" instead of
-   * "1.5 yrs". Floored, never rounded up, which is the rule content/skills.ts
-   * documents for deriving the value in the first place: the formatter must not
-   * overstate what the data claims.
+   * "1.5 yrs". Floored, never rounded up: the formatter must not overstate what
+   * the data claims.
    */
   const months = Math.floor(skill.years * 12)
   const tenure = months > 0 ? formatDuration(months) : null
@@ -66,14 +72,14 @@ function SkillRow({ skill }: { skill: Skill }) {
           flex item and is not rendered, so it moves nothing and never reaches
           the accessibility tree; speech is already safe because each span is
           its own block-level flex item. What it does buy is `textContent`:
-          "Java 6 yrs Advanced" rather than "Java6 yrs Advanced" for a crawler
+          "Java 7 yrs Advanced" rather than "Java6 yrs Advanced" for a crawler
           or a test reading the row as one string. */}
       <span className="shrink-0 font-mono text-xs whitespace-nowrap">
         {tenure ? (
           <>
             <span className="text-data">{tenure}</span>{' '}
             {/* The separator is decoration and nothing else, so it is hidden:
-                the row then announces as one phrase — "Java 6 yrs Advanced" —
+                the row then announces as one phrase — "Java 7 yrs Advanced" —
                 rather than stopping on a middle dot between every value. */}
             <span aria-hidden className="text-faint">
               ·
@@ -114,8 +120,8 @@ export function ArticleSkills({ article }: ArticleSkillsProps) {
         </h2>
       ) : null}
 
-      {/* A list, not a run of <section>s: seven groups is a countable set, and
-          "list, 7 items" is a useful thing to be told before stepping into it.
+      {/* A list, not a run of <section>s: eight groups is a countable set, and
+          "list, 8 items" is a useful thing to be told before stepping into it.
           Three columns wait until `2xl` — at `xl` the pane is around 1000px
           wide, and thirds of that wrap "Retrieval-Augmented Generation" onto
           three lines. */}
@@ -123,7 +129,25 @@ export function ArticleSkills({ article }: ArticleSkillsProps) {
         {/* `border-control` on the card, not a plain `border` — a board card needs
             a stroke that clears 3:1, and theme.css tabulates why. */}
         {groups.map((group) => (
-          <li key={group.id} className="rounded-board border border-control bg-board p-4 sm:p-5">
+          <li
+            key={group.id}
+            className={clsx(
+              // `@container` makes the card the query root for its own rows. It
+              // is set on every card, not only the wide one, because a container
+              // with no query inside it costs nothing and a conditional
+              // container is a conditional layout rule to reason about.
+              '@container rounded-board border border-control bg-board p-4 sm:p-5',
+              // Only from `lg`, because below it the outer grid is one column
+              // and spanning two of one is meaningless. Placement was checked at
+              // both multi-column widths and strands no cell: at `lg` the span
+              // lands on its own row, at `2xl` it fills columns 2-3 of the row
+              // it shares. Deliberately NOT `grid-flow-row-dense`, which would
+              // close a gap by pulling a later card forward and so break the
+              // match between visual order and the DOM order that speech and
+              // the tab sequence follow.
+              group.wide && 'lg:col-span-2',
+            )}
+          >
             <GroupHeading className="mb-3 flex items-center gap-2 font-mono text-xs tracking-[0.18em] text-muted uppercase">
               {/* Decorative: the label beside it says the same thing, and an
                   `sm` group icon is not where meaning should live. Sized in em
@@ -133,10 +157,21 @@ export function ArticleSkills({ article }: ArticleSkillsProps) {
             </GroupHeading>
 
             {/* Names are unique within a group, so the name is a stable key —
-                and a better one than the index, since the ordering rule in
-                content/skills.ts ("level, then years descending") means rows
-                move whenever a value is revised. */}
-            <ul role="list" className="flex flex-col gap-2">
+                and a better one than the index, since content/skills.ts orders
+                rows by hand, so they move whenever a value is revised.
+
+                A wide group's rows go into two columns of the CARD, queried on
+                the card's own width rather than the viewport's: how much room a
+                row has depends on the card's grid span, which differs at `lg`
+                and `2xl`, so a viewport breakpoint would be answering the wrong
+                question. Same idiom as ArticleInfoList. `gap-y-2` keeps the row
+                rhythm identical to the single-column cards beside it. */}
+            <ul
+              role="list"
+              className={clsx(
+                group.wide ? 'grid gap-x-6 gap-y-2 @lg:grid-cols-2' : 'flex flex-col gap-2',
+              )}
+            >
               {group.skills.map((skill) => (
                 <SkillRow key={skill.name} skill={skill} />
               ))}

@@ -113,6 +113,14 @@ export interface SkillGroup {
   id: string
   label: string
   icon: IconName
+  /**
+   * Absent means one column of the enclosing grid, which is what every group
+   * with a normal number of rows wants. Only a group long enough to stretch its
+   * row and leave a void beside its neighbour states it, and it then lays its
+   * own rows out in two columns so the card ends up roughly as tall as the
+   * others rather than twice as wide and just as tall.
+   */
+  wide?: boolean
   skills: Skill[]
 }
 

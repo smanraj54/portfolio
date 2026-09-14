@@ -24,7 +24,7 @@ function group(id: string, skills: SkillGroup['skills']): SkillGroup {
 /**
  * What a screen reader is left with: everything except the aria-hidden subtrees,
  * whitespace-collapsed. This is the assertion the middle dots exist for — a row
- * that announced "Java · 6 yrs · Advanced" would read punctuation aloud, and
+ * that announced "Java · 7 yrs · Advanced" would read punctuation aloud, and
  * `textContent` alone cannot tell the two apart.
  */
 function announced(element: Element): string {
@@ -51,11 +51,15 @@ describe('<ArticleSkills>', () => {
       // top-level headings and must be <h2> under the pane's <h1>.
       const heading = screen.getByRole('heading', { level: 2, name: skillGroup.label })
       const card = heading.closest('li')!
+      // Scoped to the row list rather than the whole card, because a group label
+      // can equal one of its own skill names — the AWS group is labelled "AWS"
+      // and lists "AWS" — and searching the card would then match the heading too.
+      const rows = within(card).getByRole('list')
 
-      expect(within(card).getAllByRole('listitem')).toHaveLength(skillGroup.skills.length)
+      expect(within(rows).getAllByRole('listitem')).toHaveLength(skillGroup.skills.length)
 
       for (const skill of skillGroup.skills) {
-        expect(within(card).getByText(skill.name)).toBeInTheDocument()
+        expect(within(rows).getByText(skill.name)).toBeInTheDocument()
       }
     }
 
@@ -70,8 +74,101 @@ describe('<ArticleSkills>', () => {
     // Pinned deliberately rather than derived from the content: this is the
     // reading the §6.4 decision is about, so a content edit that changes it
     // should have to come through this file.
-    expect(announced(rowFor('Java'))).toBe('Java 6 yrs Advanced')
-    expect(announced(rowFor('gRPC'))).toBe('gRPC 1 yr Working')
+    expect(announced(rowFor('Java'))).toBe('Java 7 yrs Advanced')
+    expect(announced(rowFor('gRPC'))).toBe('gRPC 2 yrs Proficient')
+  })
+
+  describe('a wide group', () => {
+    /** The card <li>, i.e. the element the outer grid places. */
+    function cardFor(label: string): HTMLElement {
+      const card = screen.getByRole('heading', { name: label }).closest('li')
+      if (!card) throw new Error(`"${label}" is not inside a card`)
+      return card
+    }
+
+    it('is set on the one real group long enough to unbalance the grid', () => {
+      const article = realArticle()
+      const wide = article.groups.filter((skillGroup) => skillGroup.wide)
+
+      // The flag is a layout escape hatch, not a decoration: if a second group
+      // ever wants it, the placement arithmetic in ArticleSkills' comment has to
+      // be redone, so that should be a deliberate edit here first.
+      expect(wide).toHaveLength(1)
+
+      // And it is the longest group, which is the whole reason it is marked.
+      const longest = article.groups.reduce((a, b) => (b.skills.length > a.skills.length ? b : a))
+      expect(wide[0]?.id).toBe(longest.id)
+    })
+
+    it('spans two outer columns and splits its own rows into two', () => {
+      render(
+        <ArticleSkills
+          article={articleOf([
+            { ...group('Narrow', [{ name: 'Java', years: 7, level: 'Advanced' }]) },
+            {
+              ...group('Wide', [
+                { name: 'AWS Lambda', years: 4, level: 'Proficient' },
+                { name: 'API Gateway', years: 4, level: 'Proficient' },
+              ]),
+              wide: true,
+            },
+          ])}
+        />,
+      )
+
+      // jsdom has no layout engine, so both halves of the decision are only
+      // observable as classes.
+      expect(cardFor('Wide')).toHaveClass('lg:col-span-2')
+
+      // Queried on the card's own width, not the viewport's: how much room a row
+      // has depends on the card's span, which differs at `lg` and `2xl`.
+      const rows = within(cardFor('Wide')).getByRole('list')
+      expect(rows).toHaveClass('@lg:grid-cols-2')
+      expect(rows.className).not.toContain('flex')
+    })
+
+    it('leaves a group without the flag in one column', () => {
+      render(
+        <ArticleSkills
+          article={articleOf([group('Narrow', [{ name: 'Java', years: 7, level: 'Advanced' }])])}
+        />,
+      )
+
+      const card = cardFor('Narrow')
+      expect(card.className).not.toContain('col-span')
+      expect(within(card).getByRole('list')).toHaveClass('flex', 'flex-col')
+    })
+
+    it('makes every card a container query root, wide or not', () => {
+      render(
+        <ArticleSkills
+          article={articleOf([
+            group('Narrow', [{ name: 'Java', years: 7, level: 'Advanced' }]),
+            { ...group('Wide', [{ name: 'AWS', years: 5, level: 'Advanced' }]), wide: true },
+          ])}
+        />,
+      )
+
+      // A conditional container would make the query's root conditional too,
+      // which is one more layout rule to hold in your head for no gain.
+      expect(cardFor('Narrow')).toHaveClass('@container')
+      expect(cardFor('Wide')).toHaveClass('@container')
+    })
+
+    it('still announces its rows as one phrase', () => {
+      render(
+        <ArticleSkills
+          article={articleOf([
+            { ...group('Wide', [{ name: 'Route 53', years: 4, level: 'Proficient' }]), wide: true },
+          ])}
+        />,
+      )
+
+      // The two-column layout is a grid on the <ul>, so each row stops being a
+      // flex container's child — the literal spaces between the spans have to
+      // survive that, or the reading runs together.
+      expect(announced(rowFor('Route 53'))).toBe('Route 53 4 yrs Proficient')
+    })
   })
 
   it('hides the separator from assistive technology', () => {
