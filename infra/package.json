@@ -6,7 +6,7 @@
     "watch": "tsc -w",
     "test": "jest",
     "cdk": "cdk",
-    "deploy": "node -r dotenv/config cdk deploy --all",
+    "deploy": "cdk deploy WebStack CicdStack",
     "synth": "cdk synth",
     "diff": "cdk diff"
   },
