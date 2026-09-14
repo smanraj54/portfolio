@@ -14,12 +14,17 @@
  * *rendered* conditionally, rather than both being emitted and one hidden with
  * `md:hidden`. Two reasons, and neither is style:
  *
- *   1. The navbar and the tab bar are both `<nav>` landmarks listing the same
- *      five destinations. Two landmarks with the same role and the same
- *      accessible name is an axe `landmark-unique` violation, and `display: none`
- *      only saves it in a browser — in a jsdom a11y test, where no stylesheet is
- *      applied, both are "visible" and the run fails on markup that is actually
- *      fine. Rendering one is fine everywhere.
+ *   1. The navbar and the tab bar are both `<nav aria-label="Sections">`
+ *      landmarks listing the same five destinations. Two landmarks with the same
+ *      role and the same accessible name is an axe `landmark-unique` violation,
+ *      and `display: none` only saves it in a browser — in a jsdom a11y test,
+ *      where no stylesheet is applied, both are "visible" and the run fails on
+ *      markup that is actually fine. Rendering one is fine everywhere.
+ *
+ *      Note what that rule does and does not forbid. The sidebar carries a third
+ *      copy of the same five links and it is on screen at the same time as the
+ *      navbar — legally, because it is named "Sidebar sections". The violation is
+ *      the repeated *name*, not the repeated destinations.
  *   2. A phone never pays for the sidebar's DOM, and the sidebar never pays for
  *      the tab bar's.
  *

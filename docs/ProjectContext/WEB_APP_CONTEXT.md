@@ -25,15 +25,15 @@ Measured, not estimated:
 |---|---|---|
 | Types + build | `npm run build --workspace=web` | passes (`tsc -b` then `vite build`, ~1937 modules) |
 | Lint | `npm run lint --workspace=web` | clean, zero warnings |
-| Tests | `npm run test --workspace=web` | **453 passing, 25 files** |
-| Bundle | `vite build` output | `index.js` 332.85 kB / **107.77 kB gzip**; `index.css` 34.01 kB / 7.46 kB gzip; `es.js` (EmailJS, lazy) 3.48 kB / 1.48 kB gzip; `index.html` 5.09 kB |
+| Tests | `npm run test --workspace=web` | **455 passing, 25 files** |
+| Bundle | `vite build` output | `index.js` 333.47 kB / **107.87 kB gzip**; `index.css` 34.45 kB / 7.50 kB gzip; `es.js` (EmailJS, lazy) 3.48 kB / 1.48 kB gzip; `index.html` 5.09 kB |
 
 Against the UI plan's milestone list (§9 there): **M1–M6 are done.** M7 (preloader, role typer, toggle
 animation) and most of M8 (favicon set, sitemap, Lighthouse pass) are not — see §13 for the exact remainder.
 
 One build warning is expected and unresolved: `chunkSizeWarningLimit` is set to 250 kB in `vite.config.ts` as a
-deliberate tripwire, and the main chunk is 332.85 kB uncompressed, so **every build prints the chunk-size
-warning**. The gzipped figure (107.77 kB) is the one the plan's performance budget was written about.
+deliberate tripwire, and the main chunk is 333.47 kB uncompressed, so **every build prints the chunk-size
+warning**. The gzipped figure (107.87 kB) is the one the plan's performance budget was written about.
 
 ---
 
@@ -162,7 +162,7 @@ Two conventions carry most of the weight:
 
 **Logic is pure and lives in `lib/`; scheduling lives in the provider.** `lib/transition.ts` and
 `lib/contactForm.ts` are reducers that hold no timers and touch no DOM. The provider (or component) above them
-owns `requestAnimationFrame`, `setTimeout` and focus. That is why 53 of the 453 tests can drive both machines
+owns `requestAnimationFrame`, `setTimeout` and focus. That is why 53 of the 455 tests can drive both machines
 directly with no fake clocks and no rendering.
 
 **Content is compiled, not fetched.** A missing or misspelled field is a build error, not a blank card at
@@ -204,18 +204,24 @@ Five sections, one per route, defined once in `content/sections.ts`. That array 
 the sidebar, navbar, tab bar, the transition machine and the head metadata all read it, so adding a section is
 one entry there plus one member of the `SectionId` union.
 
+The table is in **nav order**, which is array order in `content/sections.ts` and also the axis the transition
+machine reads for forward/back:
+
 | id | path | nav label | layout | articles |
 |---|---|---|---|---|
 | `about` | `/` | About me | stack | text (intro + portrait), facts (4 stats), infoList ("At a glance", 5 rows) |
+| `experience` | `/experience` | Experience | stack | timeline — Ansys, Amazon, Dalhousie TA, Amdocs, Synopsys |
 | `education` | `/education` | Education | stack | timeline — Dalhousie MACS (4 projects), Thapar BE |
 | `skills` | `/skills` | Skills | stack | skills — 7 groups, years + one of 4 proficiency words per skill |
-| `experience` | `/experience` | Experience | stack | timeline — Ansys, Amazon, Dalhousie TA, Amdocs, Synopsys |
 | `contact` | `/contact` | Contact me | **split** | contactForm + infoList ("Direct channels") |
 
 Notes that matter when editing:
 
 - **There is no projects section.** Résumé projects nest inside the role that owns them, as
   `TimelineItem.projects`, so each keeps its employer context. The count of five is locked by the plan.
+- **Experience deliberately precedes Education.** It is what a visitor came for, so it sits directly behind the
+  introduction and education reads as the background to it. `sections.test.ts` pins the whole order, because
+  three navs and the transition direction all derive from it.
 - Each section carries **three title widths**: `titlePrefix` + `titleLong` (RichText, shown at `lg`+) and
   `titleShort` (plain text, used below `lg` **and** as `document.title` — RichText tokens must never reach the
   title bar).
@@ -329,6 +335,14 @@ landmarks listing the same five destinations, which is an axe `landmark-unique` 
 it in a browser but not in jsdom, where no stylesheet applies. `SectionStage` sits at the same position in both
 branches so crossing the breakpoint swaps chrome without remounting the five panes.
 
+**What that rule does not forbid.** The sidebar carries a third copy of the same five links — a full-width
+button stack, `SectionLink layout="sidebar"` — and it is on screen *at the same time* as the navbar. That is
+legal because it is named `<nav aria-label="Sidebar sections">`: `landmark-unique` is about a repeated role +
+name pair, not a repeated set of destinations. Both sets read `active` from `NavigationProvider` and render from
+the same `SECTIONS` array, so either one reflects a click on the other with no second source of truth. Above
+768 px there are therefore **two** nav landmarks and below it **one**; `AppShell.test.tsx` asserts the names at
+both widths, and every link query in that file is scoped to a landmark because the names alone are ambiguous.
+
 `shell-viewport` uses `100vh` then `100svh` — **not** `100dvh`: iOS reports `100vh` as the large viewport, so
 the shell would be cropped until scrolled, and `dvh` tracks the address bar and would resize the layout
 mid-scroll.
@@ -397,7 +411,10 @@ All of it lives in `src/styles/theme.css` — Tailwind v4 has no JS config file 
   generated ramp.
 - **Two accents with a fixed division of labour:** cyan `--color-accent` is interactive and structural; amber
   `--color-data` is time and metrics **only**, never clickable. That is what lets a visitor learn one link
-  colour.
+  colour. The rule is about *text*: the sidebar's availability banner is cyan-tinted (`bg-accent/10`,
+  `border-accent/40`) and is not a control, but its words stay `text-text` — accent-coloured words on a static
+  line are what would read as a link. The section buttons beneath it invert that: transparent fill,
+  `border-control`, and accent only once active.
 - **`border` vs `control`:** `border-control` (≥3:1 in both themes, WCAG 1.4.11) for anything meant to read as
   a card or a control; plain `border` only for a rule between things already delineated. The one documented
   exception is the section pane, which is large enough for its fill step to read on its own.
@@ -470,15 +487,20 @@ These are the rules the code is built around. Breaking one is a regression even 
 9. Hit targets: the sidebar's contact rows use `py-1` to reach 28 px (SC 2.5.8), tab bar items clear 44 px.
 10. `<Collapsible>` is a `<button aria-expanded aria-controls>` + panel, not `<details>` — `<details>` cannot
     animate its height and its accessible name is scraped unreliably from a rich `<summary>`.
+11. Every nav landmark on screen has a **unique accessible name** ("Sections" for the navbar/tab bar, "Sidebar
+    sections" for the sidebar's stack). Duplicating the destinations is fine; duplicating the name is not.
 
-`axe-core` runs inside `AppShell.test.tsx` and `ArticleContactForm.test.tsx`, so violations of the structural
-rules fail the suite.
+`axe-core` runs inside `ArticleContactForm.test.tsx`, so violations of the form's rules fail the suite. **It does
+not run over the shell** — `AppShell.test.tsx` asserts the shell's structural rules by hand instead (inert panes,
+`aria-current`, the skip-link target, unique landmark names). A regression in rule 1 or rule 11 therefore fails
+on a named assertion, not on an axe rule, and adding chrome that duplicates a landmark name will not be caught
+by anything else.
 
 ---
 
 ## 11. Testing
 
-453 tests in 25 files, co-located beside the code they cover. Rough distribution:
+455 tests in 25 files, co-located beside the code they cover. Rough distribution:
 
 | Area | Tests | What is actually pinned |
 |---|---|---|
@@ -486,7 +508,7 @@ rules fail the suite.
 | `components/articles/` (6 files) | 134 | rendering per article kind, timeline ordering + disclosure, form a11y wiring and every failure path |
 | `components/ui/` (8 files) | 120 | naming rules, variants, the `className`-vs-Tailwind-order trap |
 | `content/sections.test.ts` | 25 | the registry's own invariants — id pattern, exactly one `/`, path uniqueness |
-| `components/shell/` (`AppShell` 17, `SectionStage` 4) | 21 | shell branch per breakpoint, axe pass, stage wiring |
+| `components/shell/` (`AppShell` 19, `SectionStage` 4) | 23 | shell branch per breakpoint, unique landmark names, the sidebar↔navbar link, stage wiring |
 | `styles/theme.node.test.ts` | 17 | **cross-file drift**: CSS timings vs TS constants, `@theme static`, z-index order, both palettes having the same variables, `theme-color` vs palette, absolute URLs vs `SITE_ORIGIN`, that the preloaded font file exists |
 
 **The thinnest area is `shell/`.** Only `AppShell` and `SectionStage` have their own test files; `Sidebar`,

@@ -54,11 +54,20 @@ export const profile: Profile = {
    */
   resumeUrl: null,
 
-  // Non-committal by design: states an openness, promises no availability date.
+  /**
+   * Non-committal by design: states an openness, promises no availability date.
+   *
+   * Deliberately does NOT say "senior". Seniority in the message would read as a
+   * floor — a recruiter with an intermediate opening would take it as a decline
+   * — and intermediate roles are wanted too. "Software development" is the widest
+   * accurate framing: the sidebar renders the specialisms directly above this in
+   * `roles` and `tagline`, so narrowing here would only repeat them in a place
+   * that has to be read as an invitation.
+   */
   status: {
     visible: true,
     variant: 'open',
-    message: 'Open to senior backend and platform roles',
+    message: 'Open for Software development roles',
   },
 
   socials: [

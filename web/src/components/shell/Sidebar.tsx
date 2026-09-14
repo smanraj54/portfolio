@@ -1,6 +1,23 @@
 /**
- * The desktop sidebar (§4.2): the one piece of chrome that is about the person
- * rather than the page, so it stays put while sections slide behind it.
+ * The desktop sidebar (§4.2): who this is, where to reach them, and the second
+ * copy of the section nav. It stays put while sections slide behind it.
+ *
+ * Reading order, top to bottom, and it is the order the content argues for: who
+ * (portrait, name, role, tagline) → what is wanted (the availability banner) →
+ * where to go (the five section buttons) → how to reach them (address, email,
+ * phone, then the two social marks) → the controls.
+ *
+ * The five buttons are the *same* destinations as the navbar's, rendered from the
+ * same `SECTIONS` array through the same `SectionLink`, so both sets read their
+ * active state from `NavigationProvider` and either one updates the other for
+ * free — there is no second source of truth to keep in step. The duplication is
+ * deliberate: the navbar is a compact pill for people who already know the site,
+ * and this is the full-width list for people who do not.
+ *
+ * Two `<nav>` landmarks are therefore on screen together above `md`, which is
+ * only legal because their accessible names differ ("Sections" vs "Sidebar
+ * sections"). axe's `landmark-unique` is about role + name, not count. See the
+ * note in AppShell.
  *
  * It owns its own shrunk/expanded state rather than taking it as a prop. Nothing
  * else in the app reacts to the sidebar's width — the stage is a flex sibling and
@@ -10,17 +27,22 @@
  * said something about how they want the site to look.
  *
  * Shrunk is 120px and keeps only what survives without words: the portrait, the
- * two social glyphs, and the two controls. Everything textual is dropped rather
- * than clipped or wrapped — a 96px content box cannot hold "Open to senior
- * backend and platform roles" in any form worth reading.
+ * five section glyphs, the two social glyphs, and the two controls. Everything
+ * textual is dropped rather than clipped or wrapped — a 96px content box cannot
+ * hold "Open for Software development roles" in any form worth reading. The
+ * section buttons are the one thing that survives as icons rather than being
+ * dropped: they are navigation, and shrinking the sidebar should not cost the
+ * visitor a way out of it.
  */
 import { useCallback, useState } from 'react'
 import clsx from 'clsx'
+import { SectionLink } from '@/components/shell/SectionLink'
 import { Avatar } from '@/components/ui/Avatar'
 import { IconButton } from '@/components/ui/IconButton'
 import { StatusDot } from '@/components/ui/StatusDot'
 import { ThemeToggle } from '@/components/ui/ThemeToggle'
 import { profile } from '@/content/profile'
+import { SECTIONS } from '@/content/sections'
 import { Icon } from '@/lib/icons'
 import { RichText } from '@/lib/richtext'
 import { readStorage, writeStorage } from '@/lib/storage'
@@ -138,22 +160,64 @@ export function Sidebar() {
           <p className="text-sm leading-relaxed text-muted">{profile.tagline}</p>
 
           {status.visible && (
-            <StatusDot
-              variant={status.variant}
-              label={status.message}
-              // Three pings and then still, so it draws the eye once on arrival
-              // without owing the visitor a stop control (WCAG 2.2.2).
-              pulse
-              className="text-sm text-muted"
-            />
+            /*
+             * The availability line is the one thing in this column a visitor is
+             * being asked to act on, so it gets a surface of its own rather than
+             * sitting as another muted sentence between two other muted
+             * sentences: a tinted band, a boundary, the text at full contrast,
+             * and centred so it reads as a statement rather than a list row.
+             *
+             * A `<p>`, and the words stay `text-text`. Accent is the interactive
+             * colour (§8) and accent *text* on a static line reads as a link —
+             * so the accent appears here only as the tint, the border and the
+             * dot. The 40% border does not need to clear 1.4.11's 3:1 either,
+             * for the same reason StatusDot's ring does not: nothing here is a
+             * control, and the sentence itself carries the meaning.
+             *
+             * Not to be confused with the buttons directly below it, which are
+             * transparent with a grey `border-control` — the tint is the
+             * difference, and it is the reverse of how a control looks here.
+             */
+            <p className="rounded-board border border-accent/40 bg-accent/10 px-3 py-2.5 text-center text-sm font-semibold text-text">
+              <StatusDot
+                variant={status.variant}
+                label={status.message}
+                // Three pings and then still, so it draws the eye once on arrival
+                // without owing the visitor a stop control (WCAG 2.2.2).
+                pulse
+              />
+            </p>
           )}
-
-          <ul role="list" className="flex flex-col gap-1">
-            <ContactRow icon="location" text={profile.location} />
-            <ContactRow icon="mail" text={profile.email} href={`mailto:${profile.email}`} breakAnywhere />
-            <ContactRow icon="phone" text={profile.phoneDisplay} href={`tel:${profile.phone}`} />
-          </ul>
         </>
+      )}
+
+      {/*
+        The second copy of the section nav. `aria-label` differs from the
+        navbar's on purpose (see the note at the top of this file); everything
+        else — order, labels, icons, active state, the mid-transition `replace`
+        — comes from the shared `SectionLink` and cannot drift from the navbar.
+
+        The list is the sidebar's full width because the `<aside>` is a flex
+        column that stretches its children, and `SectionLink`'s `sidebar` layout
+        carries `w-full` for the row itself. Shrunk, the aside centres instead
+        and the rows become 36px squares.
+      */}
+      <nav aria-label="Sidebar sections">
+        <ul role="list" className={clsx('flex flex-col gap-1.5', shrunk && 'items-center')}>
+          {SECTIONS.map((section) => (
+            <li key={section.id}>
+              <SectionLink section={section} layout="sidebar" iconOnly={shrunk} />
+            </li>
+          ))}
+        </ul>
+      </nav>
+
+      {!shrunk && (
+        <ul role="list" className="flex flex-col gap-1">
+          <ContactRow icon="location" text={profile.location} />
+          <ContactRow icon="mail" text={profile.email} href={`mailto:${profile.email}`} breakAnywhere />
+          <ContactRow icon="phone" text={profile.phoneDisplay} href={`tel:${profile.phone}`} />
+        </ul>
       )}
 
       {/*

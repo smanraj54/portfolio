@@ -10,6 +10,12 @@
  * Article *content* lives in a file per section and is imported rather than
  * inlined: this file stays scannable, and a content edit does not touch routing.
  *
+ * Array order IS nav order, and nav order is also what the transition machine
+ * reads to decide whether a move is forward or back (§5.2). It runs
+ * About → Experience → Education → Skills → Contact: experience is what a
+ * visitor came for, so it sits directly behind the introduction, and education
+ * follows as the background to it rather than preceding it.
+ *
  * Titles come in three widths on purpose (§4.2). `titlePrefix` + `titleLong`
  * are the display treatment at lg and up; `titleShort` is plain text, which is
  * what makes it usable both as the mobile heading and as `document.title` —
@@ -38,6 +44,18 @@ export const SECTIONS: readonly SectionDef[] = [
     articles: aboutArticles,
   },
   {
+    id: 'experience',
+    path: '/experience',
+    navLabel: 'Experience',
+    titlePrefix: 'What I have built',
+    titleLong: 'My {{experience}}',
+    titleShort: 'Experience',
+    description:
+      'Senior engineering roles at Ansys, Amazon and Amdocs, and the systems built at each: RAG assistants, cross-region search, and high-throughput APIs.',
+    icon: 'experience',
+    articles: experienceArticles,
+  },
+  {
     id: 'education',
     path: '/education',
     navLabel: 'Education',
@@ -60,18 +78,6 @@ export const SECTIONS: readonly SectionDef[] = [
       'The languages, frameworks and infrastructure Manraj Singh works in — Java, TypeScript, Python, Spring Boot, React and AWS — with years of use for each.',
     icon: 'skills',
     articles: skillsArticles,
-  },
-  {
-    id: 'experience',
-    path: '/experience',
-    navLabel: 'Experience',
-    titlePrefix: 'What I have built',
-    titleLong: 'My {{experience}}',
-    titleShort: 'Experience',
-    description:
-      'Senior engineering roles at Ansys, Amazon and Amdocs, and the systems built at each: RAG assistants, cross-region search, and high-throughput APIs.',
-    icon: 'experience',
-    articles: experienceArticles,
   },
   {
     id: 'contact',

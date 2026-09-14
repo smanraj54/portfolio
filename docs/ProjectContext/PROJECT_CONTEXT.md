@@ -2,7 +2,7 @@
 
 **Status of the repo (2026-09-13):** **Phase 1 of the web app is built and green** — five routed sections,
 real résumé content, both themes, a working contact form. `web` passes `tsc -b && vite build`, `eslint` and
-453 tests. `api/` and `infra/` are still stubs.
+455 tests. `api/` and `infra/` are still stubs.
 
 **Purpose of this document:** the *programme-level* context — what is being built, why, the monorepo, the
 toolchain, the deployment target, the content the site has to hold, and the decisions that were taken. It was
@@ -32,8 +32,8 @@ discovery/creation), in two phases:
 - Résumé-derived experience/skills content.
 - Contact links.
 
-*As delivered:* five sections — About, Education, Skills, Experience, Contact — each on its own route, all five
-permanently mounted in one stage and cross-faded. **There is no separate projects section**: the three
+*As delivered:* five sections — About, Experience, Education, Skills, Contact, in that nav order — each on its
+own route, all five permanently mounted in one stage and cross-faded. **There is no separate projects section**: the three
 deep-dives nest inside the Ansys/Amazon roles that own them, as collapsible project entries in the experience
 timeline, so each keeps its employer context. Contact is a working form, not just links. See
 [`WEB_APP_CONTEXT.md`](./WEB_APP_CONTEXT.md) §6–§7.
@@ -272,7 +272,7 @@ this section by number, so do not renumber it.
   enforced — axe-core runs in the suite, every palette colour has a measured WCAG ratio, and the
   invariants are listed in `WEB_APP_CONTEXT.md` §10.*
 - Fast: this is a static personal site; a multi-megabyte JS bundle is a failure. Prefer few dependencies.
-  *107.77 kB gzipped JS + 7.46 kB gzipped CSS, six runtime dependencies plus three font packages. Note the uncompressed 332.85 kB main
+  *107.87 kB gzipped JS + 7.50 kB gzipped CSS, six runtime dependencies plus three font packages. Note the uncompressed 333.47 kB main
   chunk trips `web`'s own 250 kB `chunkSizeWarningLimit` on every build — a deliberate tripwire, not yet
   addressed.*
 - Strong typography and generous whitespace — the content is text-heavy and technical. *Met — three

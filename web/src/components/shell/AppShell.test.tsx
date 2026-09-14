@@ -21,7 +21,7 @@
  * the browser was actually asked to paint — including the ones a `waitFor` poll
  * would step straight over.
  */
-import { render, screen, waitFor, fireEvent } from '@testing-library/react'
+import { render, screen, waitFor, fireEvent, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { MemoryRouter, useNavigate } from 'react-router-dom'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
@@ -111,8 +111,30 @@ function renderShell(initialPath = '/') {
   )
 }
 
-function navLink(id: SectionId): HTMLElement {
-  return screen.getByRole('link', { name: sectionById(id).navLabel })
+/**
+ * The two nav landmarks, by accessible name. Above `md` both are on screen — the
+ * navbar pill and the sidebar's button stack — and below it only the tab bar is,
+ * which reuses the navbar's name. So every link query has to be scoped: an
+ * unscoped `getByRole('link', { name: 'Skills' })` matches twice at desktop and
+ * throws, which would look like a bug in the shell rather than in the query.
+ */
+const NAV = {
+  /** Navbar above `md`, tab bar below it — whichever exists at this width. */
+  primary: 'Sections',
+  /** The sidebar's copy. Desktop only. */
+  sidebar: 'Sidebar sections',
+} as const
+
+function navLink(id: SectionId, landmark: string = NAV.primary): HTMLElement {
+  const nav = screen.getByRole('navigation', { name: landmark })
+  return within(nav).getByRole('link', { name: sectionById(id).navLabel })
+}
+
+/** Every nav landmark's accessible name, in document order. */
+function navNames(): string[] {
+  return screen
+    .getAllByRole('navigation')
+    .map((nav) => nav.getAttribute('aria-label') ?? '')
 }
 
 function paneOf(id: SectionId): HTMLElement {
@@ -322,7 +344,7 @@ describe('AppShell — back and forward (§9, M4)', () => {
     await user.click(navLink('experience'))
     await waitForShown('experience')
 
-    // Forward through the section order: About (0) → Experience (3).
+    // Forward through the section order: About (0) → Experience (1).
     expect(recorder.directions).toContain('forward')
     recorder.directions.length = 0
 
@@ -388,9 +410,10 @@ describe('AppShell — responsive chrome (§9, M3)', () => {
     renderShell('/')
 
     expect(screen.getByRole('complementary', { name: 'Profile' })).toBeInTheDocument()
-    expect(screen.queryByRole('navigation', { name: 'Sections' })).toBeInTheDocument()
-    // The tab bar is not merely hidden above `md` — it is not rendered.
-    expect(screen.getAllByRole('navigation')).toHaveLength(1)
+    // Exactly these two, which is also how the tab bar's absence is asserted: it
+    // is not merely hidden above `md`, it is not rendered, and a rendered one
+    // would show up here as a third landmark reusing the navbar's name.
+    expect(navNames()).toEqual([NAV.sidebar, NAV.primary])
   })
 
   it('swaps to the mobile header and tab bar below it', () => {
@@ -399,20 +422,60 @@ describe('AppShell — responsive chrome (§9, M3)', () => {
 
     expect(screen.queryByRole('complementary')).not.toBeInTheDocument()
     expect(screen.getByRole('banner')).toBeInTheDocument()
-    expect(screen.getAllByRole('navigation')).toHaveLength(1)
+    // One only: no sidebar below `md`, so no sidebar nav either.
+    expect(navNames()).toEqual([NAV.primary])
     // All five destinations survive the swap.
     for (const section of SECTIONS) {
       expect(navLink(section.id)).toBeInTheDocument()
     }
   })
 
-  it('exposes exactly one nav landmark at either width, so the names stay unique', () => {
+  it('gives every nav landmark on screen a unique accessible name', () => {
+    // The invariant behind §4.2's "render one chrome set, do not hide the other":
+    // two navigation landmarks sharing a name is an axe `landmark-unique`
+    // violation. Two navs coexisting is fine — two *names* is what breaks.
     const { unmount } = renderShell('/')
-    expect(screen.getAllByRole('navigation')).toHaveLength(1)
+    const desktop = navNames()
+    expect(new Set(desktop).size).toBe(desktop.length)
     unmount()
 
     setMatchMedia((query) => query.includes('max-width'))
     renderShell('/')
-    expect(screen.getAllByRole('navigation')).toHaveLength(1)
+    const mobile = navNames()
+    expect(new Set(mobile).size).toBe(mobile.length)
+  })
+})
+
+describe('AppShell — the sidebar section buttons', () => {
+  it('offers the same five destinations as the navbar, in the same order', () => {
+    renderShell('/')
+
+    const sidebarNav = screen.getByRole('navigation', { name: NAV.sidebar })
+    expect(within(sidebarNav).getAllByRole('link').map((link) => link.textContent)).toEqual(
+      SECTIONS.map((section) => section.navLabel),
+    )
+    // Same hrefs, so both sets are the same links and not a second route table.
+    for (const section of SECTIONS) {
+      expect(navLink(section.id, NAV.sidebar)).toHaveAttribute('href', section.path)
+    }
+  })
+
+  it('navigates, and leaves both copies of the nav marked current', async () => {
+    const user = userEvent.setup()
+    renderShell('/')
+
+    await user.click(navLink('skills', NAV.sidebar))
+    await waitForShown('skills')
+
+    // The point of sharing one provider: clicking either set updates both.
+    expect(navLink('skills', NAV.sidebar)).toHaveAttribute('aria-current', 'page')
+    expect(navLink('skills')).toHaveAttribute('aria-current', 'page')
+    expect(navLink('about', NAV.sidebar)).not.toHaveAttribute('aria-current')
+
+    // And the reverse direction: a navbar click updates the sidebar.
+    await user.click(navLink('contact'))
+    await waitForShown('contact')
+    expect(navLink('contact', NAV.sidebar)).toHaveAttribute('aria-current', 'page')
+    expect(navLink('skills', NAV.sidebar)).not.toHaveAttribute('aria-current')
   })
 })

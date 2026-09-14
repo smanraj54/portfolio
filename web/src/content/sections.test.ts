@@ -46,7 +46,9 @@ function duplicates(values: string[]): string[] {
 
 describe('section set', () => {
   it('is the five sections §1 locks, in nav order', () => {
-    expect(SECTION_IDS).toEqual(['about', 'education', 'skills', 'experience', 'contact'])
+    // Order is not incidental: it is nav order, tab-bar order, sidebar-button
+    // order and the transition machine's forward/back axis, all at once.
+    expect(SECTION_IDS).toEqual(['about', 'experience', 'education', 'skills', 'contact'])
   })
 
   it('gives exactly one section the root path', () => {
@@ -178,7 +180,9 @@ describe('lookups', () => {
   it('orders indices the same way the nav does', () => {
     expect(sectionIndex('about')).toBe(0)
     expect(sectionIndex('contact')).toBe(SECTION_IDS.length - 1)
-    expect(sectionIndex('education')).toBeLessThan(sectionIndex('experience'))
+    // Experience leads Education, which is the one pair in the order that was a
+    // decision rather than a given.
+    expect(sectionIndex('experience')).toBeLessThan(sectionIndex('education'))
   })
 })
 
