@@ -59,10 +59,13 @@ portfolio/
 ├── .gitignore
 ├── docs/
 │   ├── DevelopmentPlans/
-│   │   └── PORTFOLIO_UI_PLAN.md   # the design plan the web app was built from
+│   │   ├── PORTFOLIO_UI_PLAN.md   # the design plan the web app was built from
+│   │   └── CONTACT_API_AND_NOTIFICATIONS_PLAN.md  # skills refresh, contact API, visit alerts
 │   └── ProjectContext/
 │       ├── PROJECT_CONTEXT.md     # this file — programme level
-│       └── WEB_APP_CONTEXT.md     # the web app as built: architecture + behaviour
+│       ├── WEB_APP_CONTEXT.md     # the web app as built: architecture + behaviour
+│       ├── INFRA_CONTEXT.md       # the CDK app: stacks, deploy split, account facts
+│       └── API_CONTEXT.md         # the backend: contract, constraints — no source yet
 ├── knowledge/                # RAG source corpus (Phase 2) + résumé
 │   ├── global-search-restriction-checks.md      (348 lines)
 │   ├── keyword-search-revamp.md                 (401 lines)
@@ -172,7 +175,8 @@ Root: `npm run dev:web`, `npm run dev:api`, `npm run build` (all workspaces), `n
 
 ## 4. Deployment architecture
 
-**Built (`WebStack` + `CicdStack`, synthesized and diffed; deploy is manual and still pending):**
+**Deployed and live** (`WebStack` + `CicdStack`, `CREATE_COMPLETE` since 2026-09-14, zero `cdk diff` drift —
+see [`INFRA_CONTEXT.md`](./INFRA_CONTEXT.md) §1). Infra deploys stay manual; content deploys are automated:
 
 - Domain **`manrajsingh.ca`** (Namecheap registration, Route 53 public zone `Z000911238MPFP38YA75M`, account
   `593793064239`, us-east-1). ACM certificate covering the apex and `*.manrajsingh.ca` is **imported, never
@@ -268,8 +272,12 @@ the site; the site holds the summary layer and Phase 2 will serve the depth from
 ### 5.3 Résumé
 
 `knowledge/Resume - MS.pdf` is the source for the experience/skills/education content, and **its text has now
-been extracted** to `knowledge/Resume - MS.md`. All of the experience, education and skills copy on the site is
-derived from it, hand-authored as typed TS modules in `web/src/content/`.
+been extracted** to `knowledge/Resume - MS.md`. The experience and education copy on the site is derived from
+it, hand-authored as typed TS modules in `web/src/content/`.
+
+The **skills list is the exception**: it is no longer résumé-derived. It is an author-supplied
+self-assessment — 8 groups, 78 entries — and `web/src/content/skills.ts`'s docblock is the authority on what
+rules the numbers still obey. Do not "correct" it back against the résumé timeline.
 
 **Still outstanding:** `profile.resumeUrl` is `null`, which hides the sidebar's download button. The source
 résumé carries a full street address, so it must be redacted before a PDF is served from `web/public/`.
@@ -359,15 +367,21 @@ is done. What replaces it:
 | You want | Read |
 |---|---|
 | The web app as it stands — architecture, runtime flows, tokens, tests, gaps | [`WEB_APP_CONTEXT.md`](./WEB_APP_CONTEXT.md) |
+| The CDK app — stack by stack, the manual-infra/automated-content split, account facts | [`INFRA_CONTEXT.md`](./INFRA_CONTEXT.md) |
+| The backend — the contract the browser already defines, SES and CloudFront constraints | [`API_CONTEXT.md`](./API_CONTEXT.md) |
 | Why the UI is shaped the way it is; the milestone list; `§x.y` targets in source comments | [`../DevelopmentPlans/PORTFOLIO_UI_PLAN.md`](../DevelopmentPlans/PORTFOLIO_UI_PLAN.md) |
+| The contact API, the visit notifications and the skills refresh | [`../DevelopmentPlans/CONTACT_API_AND_NOTIFICATIONS_PLAN.md`](../DevelopmentPlans/CONTACT_API_AND_NOTIFICATIONS_PLAN.md) |
 | The programme, the monorepo, the toolchain, the deployment target, the decisions | this file |
 
 **The open work now sits outside `web/`.** In rough priority order:
 
-1. **Deploy `WebStack` + `CicdStack`.** The code is written, synthesized and diffed (§4); nothing is deployed. The
-   ordering is load-bearing: `cdk bootstrap aws://593793064239/us-east-1` first (the account has no `CDKToolkit`),
-   then `cdk deploy WebStack CicdStack`, then trigger `deploy-web.yml` via `workflow_dispatch` to fill the bucket.
-   Commit the `infra/cdk.context.json` the deploy produces.
+1. ~~**Deploy `WebStack` + `CicdStack`.**~~ **Done, 2026-09-14.** The account is bootstrapped (`CDKToolkit`,
+   version 32), both stacks are `CREATE_COMPLETE` with **zero `cdk diff` drift**, `deploy-web.yml` has published
+   successfully three times, and `https://manrajsingh.ca` answers 200 on the apex and on deep links. Bucket
+   `webstack-sitebucket397a1860-4ouxvxedtfvg`, distribution `EQSS8SD02HBHH`. `DataStack` is **not** in the
+   account: CloudFormation rejects its empty `Resources` section, so it cannot deploy until it holds something.
+   See [`INFRA_CONTEXT.md`](./INFRA_CONTEXT.md) §1 for the verified state. **Everything from here changes a
+   running system.**
 2. **An OG image.** `web/index.html` no longer references `/favicon.ico`, `/apple-touch-icon.png`,
    `/site.webmanifest` or `/og-image.png` — those links were deleted rather than left pointing at files that do not
    exist, because the 403→`/index.html`@200 rewrite turns each into a 200 `text/html` response that browsers cannot
@@ -380,8 +394,14 @@ is done. What replaces it:
 5. **An S3 lifecycle rule on the `assets/` prefix.** The deploy workflow deliberately does not `--delete` hashed
    assets (a visitor still running the previous `index.html` would 404 on the lazily imported EmailJS chunk), so
    superseded builds accumulate at ~370 KB each. Negligible cost, but expiry belongs in `WebStack`, not in CI.
-6. **The EmailJS repository Variables** (`VITE_EMAILJS_SERVICE_ID`, `_TEMPLATE_ID`, `_PUBLIC_KEY`) do not exist yet.
-   Their absence is a *soft* failure — the contact form degrades and the build stays green — so the first deploys
-   will silently ship a non-functional form.
+6. **The contact form has no working transport.** The EmailJS repository Variables
+   (`VITE_EMAILJS_SERVICE_ID`, `_TEMPLATE_ID`, `_PUBLIC_KEY`) do not exist, and their absence is a *soft*
+   failure — the form degrades and the build stays green — so a deploy today silently ships a non-functional
+   form. **The resolution is to delete the requirement, not satisfy it:** the form moves behind a Lambda in
+   `ApiStack`, which also unblocks the acknowledgement email, a rate limit the visitor cannot read, and the
+   visit notifications. See
+   [`../DevelopmentPlans/CONTACT_API_AND_NOTIFICATIONS_PLAN.md`](../DevelopmentPlans/CONTACT_API_AND_NOTIFICATIONS_PLAN.md)
+   and [`API_CONTEXT.md`](./API_CONTEXT.md). Note the SES sandbox gates the acknowledgement half of it on a
+   production-access request with a multi-day turnaround.
 7. **Then Phase 2**: the Bedrock RAG chat panel. The sequencing constraint in §1 is satisfied — Phase 1 is
    implemented, so the chat design is now unblocked. `api/`, `DataStack` and `SyncStack` are still empty.

@@ -25,8 +25,8 @@ Measured, not estimated:
 |---|---|---|
 | Types + build | `npm run build --workspace=web` | passes (`tsc -b` then `vite build`, ~1938 modules) |
 | Lint | `npm run lint --workspace=web` | clean, zero warnings |
-| Tests | `npm run test --workspace=web` | **495 passing, 26 files** |
-| Bundle | `vite build` output | `index.js` 334.54 kB / **108.29 kB gzip**; `index.css` 34.45 kB / 7.50 kB gzip; `es.js` (EmailJS, lazy) 3.48 kB / 1.48 kB gzip; `index.html` 5.44 kB |
+| Tests | `npm run test --workspace=web` | **500 passing, 26 files** |
+| Bundle | `vite build` output | `index.js` 336.24 kB / **108.65 kB gzip**; `index.css` 34.62 kB / 7.55 kB gzip; `es.js` (EmailJS, lazy) 3.48 kB / 1.48 kB gzip; `index.html` 5.44 kB |
 
 Against the UI plan's milestone list (§9 there): **M1–M6 are done.** M7 (preloader, role typer, toggle
 animation) and most of M8 (favicon set, sitemap, Lighthouse pass) are not — see §13 for the exact remainder.
@@ -218,7 +218,7 @@ machine reads for forward/back:
 | `about` | `/` | About me | stack | text (intro + portrait), facts (4 stats), infoList ("At a glance", 5 rows) |
 | `experience` | `/experience` | Experience | stack | timeline — Ansys, Amazon, Dalhousie TA, Amdocs, Synopsys |
 | `education` | `/education` | Education | stack | timeline — Dalhousie MACS (4 projects), Thapar BE |
-| `skills` | `/skills` | Skills | stack | skills — 7 groups, years + one of 4 proficiency words per skill |
+| `skills` | `/skills` | Skills | stack | skills — 8 groups / 78 entries, years + one of 4 proficiency words per skill |
 | `contact` | `/contact` | Contact me | **split** | contactForm + infoList ("Direct channels") |
 
 Notes that matter when editing:
@@ -520,9 +520,17 @@ Other things worth knowing before editing content:
   text, which is what keeps content strings reusable verbatim in the Phase 2 RAG corpus.
 - `ProjectItem.id` is a stable RAG citation anchor — **never renumber**. `knowledgeDoc` names a file in
   `knowledge/` and is unused in Phase 1.
-- Skills are `years` + one of four proficiency words, never a percentage: every year count is derived from the
-  role timeline, so each is defensible line by line. This is why `ArticleSkills` does not use `ProgressBar` —
-  a bar needs a denominator this data does not have, and once invented, the width is what gets compared.
+- Skills are `years` + one of four proficiency words, never a percentage: a year count is a claim that can be
+  asked about line by line and a percentage is not. This is why `ArticleSkills` does not use `ProgressBar` —
+  a bar needs a denominator this data does not have, and once invented, the width is what gets compared. The
+  values are author-supplied self-assessments; `content/skills.ts`'s docblock states the four properties that
+  still have to hold (nothing above the 7-year career, `level` is ownership not duration, in-group order is
+  author-given and **not** a derived sort, and cross-listed entries must agree).
+- `SkillGroup.wide` is a layout escape hatch for a group long enough to unbalance the card grid — one group
+  (AWS, 21 rows) sets it. It takes `lg:col-span-2` on the outer grid and lays its own rows out in two columns
+  via a **container query** on the card, since the room a row has depends on the card's span, not the viewport.
+  `sections.test.ts` forbids duplicate skill names *within* a group only, so the deliberate cross-group
+  duplicates (DynamoDB, Amazon Bedrock) are legal.
 - Dates are `{ year, month }` with `month` 1-12; a `null` end renders as "Present". All arithmetic is in
   `lib/dates.ts`, and timeline order is **computed from the dates**, not trusted from array order.
 - Icons come from the closed `IconName` union in `lib/icons.tsx`; a typo is a build error.
@@ -563,12 +571,12 @@ by anything else.
 
 ## 11. Testing
 
-495 tests in 26 files, co-located beside the code they cover. Rough distribution:
+500 tests in 26 files, co-located beside the code they cover. Rough distribution:
 
 | Area | Tests | What is actually pinned |
 |---|---|---|
 | `lib/` machines (`contactForm` 34, `dates` 30, `reveal` 29, `contact` 27, `richtext` 19, `transition` 19, `head` 7) | 165 | reducer transitions, reference equality, validation, month arithmetic, token parsing, tag upserts, the reveal band's geometry and which reflows it refuses |
-| `components/articles/` (7 files) | 139 | rendering per article kind, timeline ordering + disclosure, form a11y wiring and every failure path |
+| `components/articles/` (7 files) | 144 | rendering per article kind, timeline ordering + disclosure, form a11y wiring and every failure path |
 | `components/ui/` (8 files) | 126 | naming rules, variants, controlled vs uncontrolled disclosure, the `className`-vs-Tailwind-order trap |
 | `content/sections.test.ts` | 25 | the registry's own invariants — id pattern, exactly one `/`, path uniqueness |
 | `components/shell/` (`AppShell` 19, `SectionStage` 4) | 23 | shell branch per breakpoint, unique landmark names, the sidebar↔navbar link, stage wiring |
