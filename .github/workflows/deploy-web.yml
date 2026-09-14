@@ -1,0 +1,194 @@
+# Publishes web/dist to the S3 origin behind CloudFront.
+#
+# Content deploys only. Infrastructure changes stay manual (`cdk deploy` from the
+# portfolio SSO profile) — this workflow has no permission to touch the stack.
+#
+# PREREQUISITE: WebStack and CicdStack must already be deployed by hand. The role
+# this workflow assumes is created *by* CicdStack, so it cannot bootstrap itself.
+# Until then every run fails at "Read stack outputs".
+name: Deploy web
+
+on:
+  push:
+    branches: [main]
+    # A deny-list, not an allow-list: an allow-list silently skips a deploy when
+    # the root lockfile or a shared tsconfig changes. .github/** is deliberately
+    # not ignored — a change to this file should trigger a run that exercises it.
+    paths-ignore:
+      - 'docs/**'
+      - 'knowledge/**'
+      - '**/*.md'
+  workflow_dispatch:
+
+# Never cancel a running deploy. A run killed between the assets pass and the
+# index.html pass leaves the bucket serving HTML that points at objects which
+# were never uploaded.
+concurrency:
+  group: deploy-web
+  cancel-in-progress: false
+
+# OIDC only — there are no AWS access keys in this repository. id-token lets the
+# runner mint the GitHub-signed JWT; declaring the block at all drops every other
+# scope to none.
+permissions:
+  contents: read
+  id-token: write
+
+env:
+  AWS_REGION: us-east-1
+  STACK_NAME: WebStack
+  # Hardcoded deliberately. The account id is already public here via the
+  # certificate ARN in infra/bin/infra.ts, and an ARN grants nothing on its own:
+  # sts:AssumeRoleWithWebIdentity is gated by the role's trust policy, which pins
+  # this repository's immutable ids and refs/heads/main.
+  AWS_ROLE_ARN: arn:aws:iam::593793064239:role/portfolio-web-deploy
+  AWS_PAGER: ''
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    defaults:
+      run:
+        # Explicit bash gives `-eo pipefail`, which the implicit default lacks.
+        shell: bash
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          # One root lockfile covers all three workspaces, so no
+          # cache-dependency-path is needed.
+          cache: npm
+
+      - name: Install
+        run: npm ci
+
+      # Gates run before the AWS role is assumed, so a red commit can never
+      # reach S3. theme.node.test.ts cross-checks index.html against
+      # SITE_ORIGIN, which is what catches a half-finished domain change.
+      - name: Lint
+        run: npm -w web run lint
+
+      - name: Test
+        run: npm -w web run test
+
+      - name: Build
+        env:
+          # Every VITE_ value is inlined into the public bundle, so these belong
+          # in repository Variables, not Secrets. If unset the contact form
+          # degrades gracefully and the build still passes.
+          VITE_EMAILJS_SERVICE_ID: ${{ vars.VITE_EMAILJS_SERVICE_ID }}
+          VITE_EMAILJS_TEMPLATE_ID: ${{ vars.VITE_EMAILJS_TEMPLATE_ID }}
+          VITE_EMAILJS_PUBLIC_KEY: ${{ vars.VITE_EMAILJS_PUBLIC_KEY }}
+          # VITE_SITE_ORIGIN is intentionally not set: the source default in
+          # web/src/lib/site.ts is already the production origin, and
+          # theme.node.test.ts asserts index.html agrees with it. Injecting it
+          # here would let the two drift.
+        run: npm -w web run build
+
+      # Cheap insurance against publishing a technically-successful empty build.
+      - name: Verify build output
+        run: |
+          test -s web/dist/index.html \
+            || { echo "::error::web/dist/index.html is missing or empty"; exit 1; }
+          test -n "$(find web/dist/assets -type f -print -quit 2>/dev/null)" \
+            || { echo "::error::web/dist/assets is empty - refusing to deploy"; exit 1; }
+          grep -q '/assets/' web/dist/index.html \
+            || { echo "::error::index.html references no hashed asset"; exit 1; }
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ env.AWS_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+          role-session-name: gha-deploy-web-${{ github.run_id }}
+
+      # Read from the stack rather than hardcoding. Both keys are direct children
+      # of WebStack, so OutputKey is the construct id with no hash suffix.
+      - name: Read stack outputs
+        id: stack
+        run: |
+          set -euo pipefail
+          output() {
+            aws cloudformation describe-stacks \
+              --stack-name "$STACK_NAME" \
+              --query "Stacks[0].Outputs[?OutputKey=='$1'].OutputValue" \
+              --output text
+          }
+          bucket="$(output SiteBucketName)"
+          distribution="$(output SiteDistributionId)"
+          # A missing OutputKey prints "" and a stack with no Outputs section
+          # prints "None" — both with exit 0. Guard against both, or the sync
+          # silently targets "s3://".
+          require() {
+            if [ -z "$2" ] || [ "$2" = "None" ]; then
+              echo "::error::$1 not found in $STACK_NAME outputs - is it deployed?"
+              exit 1
+            fi
+          }
+          require SiteBucketName "$bucket"
+          require SiteDistributionId "$distribution"
+          echo "bucket=$bucket" >> "$GITHUB_OUTPUT"
+          echo "distribution=$distribution" >> "$GITHUB_OUTPUT"
+          echo "Deploying to s3://$bucket behind $distribution"
+
+      # Hashed assets FIRST. index.html hard-references /assets/index-<hash>.js;
+      # if the new HTML went live first the missing asset would hit the
+      # 403 -> /index.html @ 200 rule and the browser would receive text/html for
+      # a module script — a blank page, not a stale one. Immutable is safe here
+      # precisely because the filename changes whenever the bytes do.
+      - name: Sync hashed assets
+        run: |
+          aws s3 sync web/dist "s3://${{ steps.stack.outputs.bucket }}" \
+            --no-progress \
+            --exclude '*' --include 'assets/*' \
+            --cache-control 'public, max-age=31536000, immutable'
+
+      # Fonts are copied verbatim from web/public, so their filenames never
+      # change and a year would be unrecoverable — an invalidation clears the
+      # edge but can never clear a browser cache. A week keeps them off the LCP
+      # path for returning visitors without stranding a future font swap.
+      - name: Sync fonts
+        run: |
+          aws s3 sync web/dist "s3://${{ steps.stack.outputs.bucket }}" \
+            --no-progress \
+            --exclude '*' --include 'fonts/*' \
+            --cache-control 'public, max-age=604800'
+
+      # Everything with a stable, unhashed URL: index.html and the root SVGs.
+      # no-cache means "may store, must revalidate", so the next request after a
+      # deploy picks up the new build instead of waiting out a TTL.
+      #
+      # --delete lives on this pass only. It is deliberately NOT applied to
+      # assets/: web/src/lib/contact.ts lazily imports @emailjs/browser as its own
+      # chunk, so a visitor still running the previous index.html would 404 on a
+      # deleted chunk. Superseded assets accumulate at ~370 KB per build; an S3
+      # lifecycle rule on the assets/ prefix is the right cleanup, not --delete.
+      - name: Sync index.html and root files
+        run: |
+          aws s3 sync web/dist "s3://${{ steps.stack.outputs.bucket }}" \
+            --no-progress --delete \
+            --exclude 'assets/*' --exclude 'fonts/*' \
+            --cache-control 'no-cache'
+
+      # After every sync, never before. "/*" must stay quoted or the runner shell
+      # expands it against the working directory. It counts as one path against
+      # the monthly free invalidation allowance.
+      - name: Invalidate CloudFront
+        run: |
+          aws cloudfront create-invalidation \
+            --distribution-id "${{ steps.stack.outputs.distribution }}" \
+            --paths '/*'
+
+      - name: Summary
+        run: |
+          {
+            echo "### Deployed"
+            echo ""
+            echo "- bucket: \`${{ steps.stack.outputs.bucket }}\`"
+            echo "- distribution: \`${{ steps.stack.outputs.distribution }}\`"
+            echo "- https://manrajsingh.ca/"
+          } >> "$GITHUB_STEP_SUMMARY"
