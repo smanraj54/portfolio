@@ -36,7 +36,7 @@ export const profile: Profile = {
 
   // Compressed from the résumé's own profile line: owning a service end to end
   // and cutting latency on systems already in production.
-  tagline: 'I own backend services end to end and cut latency on systems already in production.',
+  tagline: 'I ship features across the whole stack and cut latency on systems already carrying traffic.',
 
   location: 'Surrey, BC, Canada',
   email: 'smanraj54@gmail.com',
