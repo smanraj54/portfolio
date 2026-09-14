@@ -16,11 +16,16 @@
  *   /blog     → /          (not a section; `sectionIdForPath` already falls back
  *                          to About, and this makes the URL say so)
  *
- * TODO(M8): this is a client-side correction, so `/blog` is served 200 by
- * CloudFront and rewritten here rather than answered with a real 404. A hard 404
- * needs the CloudFront custom-error-response mapping recorded as a TODO in
- * infra/lib/api-stack.ts, and — if this site ever has enough URLs for it to
- * matter — a NotFound view instead of a redirect.
+ * This is a client-side correction, so `/blog` is served 200 by CloudFront and
+ * rewritten here rather than answered with a real 404 — and that is now the
+ * intended end state. infra/lib/web-stack.ts maps both 403 and 404 to
+ * /index.html at 200, which is what makes the routes above work as deep links
+ * at all; the price is that every unknown path is a soft 404.
+ *
+ * A hard 404 would need the origin to be able to answer one (the OAC bucket
+ * policy grants s3:GetObject but not s3:ListBucket, so S3 returns 403 for a
+ * missing key) plus a NotFound view instead of this redirect. Not worth it for
+ * five sections.
  */
 import { useEffect } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
