@@ -91,6 +91,11 @@ const contactChannelsArticle: Article = {
       value: profile.email,
       href: `mailto:${profile.email}`,
       icon: 'mail',
+      // The one row whose value is more often wanted as a string than as a
+      // destination: an address gets pasted into whatever the visitor is already
+      // writing in, while `mailto:` only serves someone whose mail client is the
+      // one their browser opens. Both stay — see InfoItem.copyable.
+      copyable: true,
     },
     {
       id: 'contact-phone',

@@ -9,7 +9,7 @@ the monorepo, the deployment target. [`../DevelopmentPlans/PORTFOLIO_UI_PLAN.md`
 is the design plan the implementation followed. **Every `§x.y` reference in a source comment points at the UI
 plan**, not at this file — except a handful that name `PROJECT_CONTEXT.md` explicitly.
 
-**Last verified:** 2026-09-13, by running the commands in §2 against the working tree.
+**Last verified:** 2026-09-14, by running the commands in §2 against the working tree.
 
 ---
 
@@ -23,17 +23,17 @@ Measured, not estimated:
 
 | Check | Command | Result |
 |---|---|---|
-| Types + build | `npm run build --workspace=web` | passes (`tsc -b` then `vite build`, ~1938 modules) |
+| Types + build | `npm run build --workspace=web` | passes (`tsc -b` then `vite build`, ~1941 modules) |
 | Lint | `npm run lint --workspace=web` | clean, zero warnings |
-| Tests | `npm run test --workspace=web` | **500 passing, 26 files** |
-| Bundle | `vite build` output | `index.js` 336.24 kB / **108.65 kB gzip**; `index.css` 34.62 kB / 7.55 kB gzip; `es.js` (EmailJS, lazy) 3.48 kB / 1.48 kB gzip; `index.html` 5.44 kB |
+| Tests | `npm run test --workspace=web` | **537 passing, 3 skipped, 29 files** |
+| Bundle | `vite build` output | `index.js` 338.40 kB / **109.29 kB gzip**; `index.css` 35.85 kB / 7.74 kB gzip; `es.js` (EmailJS, lazy) 3.48 kB / 1.48 kB gzip; `index.html` 5.44 kB |
 
 Against the UI plan's milestone list (§9 there): **M1–M6 are done.** M7 (preloader, role typer, toggle
 animation) and most of M8 (favicon set, sitemap, Lighthouse pass) are not — see §13 for the exact remainder.
 
 One build warning is expected and unresolved: `chunkSizeWarningLimit` is set to 250 kB in `vite.config.ts` as a
-deliberate tripwire, and the main chunk is 333.47 kB uncompressed, so **every build prints the chunk-size
-warning**. The gzipped figure (107.87 kB) is the one the plan's performance budget was written about.
+deliberate tripwire, and the main chunk is 338.40 kB uncompressed, so **every build prints the chunk-size
+warning**. The gzipped figure (109.29 kB) is the one the plan's performance budget was written about.
 
 ---
 
@@ -99,8 +99,9 @@ ESLint (flat config) is stricter than the scaffold: `react-hooks/exhaustive-deps
 warning, because the transition machine schedules cancellable timers from effects and a stale closure there is
 the exact A→B→A bug the machine exists to prevent. `consistent-type-imports` is enforced. `src/lib` is exempt
 from `react-refresh/only-export-components` (it exports `RichText` and `Icon` beside pure helpers), and
-`src/providers` allows exactly three named non-component exports: `useTheme`, `useViewport`,
-`useSectionNavigation`. Adding a provider means adding its hook to that list on purpose.
+`src/providers` allows only named exports on a list: the hooks `useTheme`, `useViewport`,
+`useSectionNavigation` and `useToast`, plus `TOAST_DISMISS_MS` (the one non-hook, and the config comment says
+why). Adding a provider means adding its hook to that list on purpose.
 
 ---
 
@@ -125,14 +126,14 @@ web/
     ├── types/content.ts    # THE content contract
     ├── content/            # profile + one file per section + the section registry
     ├── lib/                # pure logic + two hooks (media, reveal); no other React state
-    ├── providers/          # Viewport, Theme, Navigation
+    ├── providers/          # Viewport, Theme, Navigation, Toast
     ├── components/
-    │   ├── ui/             # 8 primitives
+    │   ├── ui/             # 9 primitives
     │   ├── shell/          # chrome + the stage
     │   └── articles/       # one renderer per article kind + the dispatcher
     ├── styles/theme.css    # fonts, tokens, palettes, base layer, section state machine
     ├── styles/theme.node.test.ts   # asserts CSS ↔ TS ↔ index.html agree
-    ├── test/               # setup.ts (jsdom shims, setMatchMedia) + intersection.ts (a fake observer)
+    ├── test/               # setup.ts (jsdom shims, setMatchMedia) + intersection.ts (a fake observer) + clipboard.ts
     └── assets/             # hero.png, react.svg, vite.svg — stock leftovers, unreferenced
 ```
 
@@ -149,7 +150,7 @@ content/*.ts            the actual words — compiled in as typed TS modules, ne
       ↑
 lib/*                   pure functions and state machines. Two hooks, no other React state.
       ↑
-providers/*             the three pieces of global state, each backed by a lib machine
+providers/*             four pieces of global state; the first three are backed by a lib machine
       ↑
 components/ui           dumb primitives — props in, markup out
 components/shell        chrome, layout, the stage
@@ -162,7 +163,7 @@ Two conventions carry most of the weight:
 
 **Logic is pure and lives in `lib/`; scheduling lives in the provider.** `lib/transition.ts` and
 `lib/contactForm.ts` are reducers that hold no timers and touch no DOM. The provider (or component) above them
-owns `requestAnimationFrame`, `setTimeout` and focus. That is why 53 of the 500 tests can drive both machines
+owns `requestAnimationFrame`, `setTimeout` and focus. That is why 53 of the 540 tests can drive both machines
 directly with no fake clocks and no rendering.
 
 The two exceptions are hooks, and each subscribes to exactly one browser API and owns nothing else:
@@ -184,7 +185,7 @@ runtime, and there are zero data round-trips at load.
 | `contactForm.ts` | the form's 4-state reducer, announcement wording, `firstInvalidField` |
 | `dates.ts` | `YearMonth` maths — inclusive month counts, `formatDateRange`, `formatDuration`, ISO months, sort comparators |
 | `richtext.tsx` | `{{accent}}` / `[[strong]]` → `ReactNode[]`. No `dangerouslySetInnerHTML` anywhere in the app |
-| `icons.tsx` | the closed `IconName` union (42 names) over lucide, plus two hand-authored brand marks (lucide v1 dropped them) |
+| `icons.tsx` | the closed `IconName` union (43 names) over lucide, plus two hand-authored brand marks (lucide v1 dropped them) |
 | `head.ts` | per-route `document.title` / description / OG / Twitter / canonical, all upserted in place |
 | `site.ts` | `SITE_ORIGIN`, titles, `absoluteUrl()` |
 | `media.ts` | `useMediaQuery` via `useSyncExternalStore`, and the three `QUERY` strings |
@@ -192,9 +193,10 @@ runtime, and there are zero data round-trips at load.
 | `storage.ts` | `localStorage` that cannot throw (Safari private mode throws on *access*) |
 | `dom.ts` | `sectionDomId()` — the one string three components must agree on |
 | `result.ts` | `Result<T, E>`, so transports report failure as a value |
+| `clipboard.ts` | `copyText` → `Result<void, 'unsupported' \| 'refused'>`. No `execCommand` fallback (§7.8) |
 
-`components/ui/`: `Avatar`, `Collapsible`, `DateBadge`, `IconButton`, `ProgressBar`, `StatusDot`, `Tag`,
-`ThemeToggle`. (`ProgressBar` is built and tested but **deliberately unused** — see §13.)
+`components/ui/`: `Avatar`, `Collapsible`, `CopyButton`, `DateBadge`, `IconButton`, `ProgressBar`, `StatusDot`,
+`Tag`, `ThemeToggle`. (`ProgressBar` is built and tested but **deliberately unused** — see §13.)
 
 `components/shell/`: `AppShell`, `Sidebar`, `Navbar`, `MobileHeader`, `TabBar`, `SectionLink`, `SectionStage`,
 `Section`.
@@ -219,7 +221,7 @@ machine reads for forward/back:
 | `experience` | `/experience` | Experience | stack | timeline — Ansys, Amazon, Dalhousie TA, Amdocs, Synopsys |
 | `education` | `/education` | Education | stack | timeline — Dalhousie MACS (4 projects), Thapar BE |
 | `skills` | `/skills` | Skills | stack | skills — 8 groups / 78 entries, years + one of 4 proficiency words per skill |
-| `contact` | `/contact` | Contact me | stack (**split** when the form is on) | infoList ("Direct channels") — contactForm is switched off, see §7.5 |
+| `contact` | `/contact` | Contact me | stack (**split** when the form is on) | infoList ("Direct channels", the email row also copyable — §7.8) — contactForm is switched off, see §7.5 |
 
 Notes that matter when editing:
 
@@ -464,6 +466,40 @@ A closed panel that holds the focus is never closed under the visitor — `inert
 focus to `<body>`. Only the panel is guarded, not the row: a mouse click leaves focus on the trigger, and
 guarding that would pin the last row clicked for the rest of the visit.
 
+### 7.8 Copy to clipboard, and toasts
+
+Three files, split the same way as everything else: the write in `lib/clipboard.ts`, the surface in
+`providers/ToastProvider.tsx`, the control in `components/ui/CopyButton.tsx`. Contact's email row is the only
+caller today — `InfoItem.copyable` (§9) turns it on, and `ArticleInfoList` composes both strings from the row's
+own label, so nothing in the chain knows it is copying an email address.
+
+- **The `mailto:` link stays.** The copy button is an addition at the row's right-hand edge, not a replacement:
+  a link serves someone whose mail client is the one their browser opens, and the string serves everyone else.
+  It lives *inside* the `<dd>`, because a `<dl>` that groups its pairs in `<div>`s may contain nothing but `<dt>`
+  and `<dd>` at that level — a wrapper around the value and its button is markup the content model rejects.
+- **Three reports of one outcome, deliberately.** The glyph swaps to a check for `COPIED_RESET_MS` (2 s), the
+  accessible name swaps with it ("Email copied to clipboard" rather than "Copy Email"), and the toast announces
+  the same sentence. The third exists because NVDA and JAWS do not reliably re-announce a name that changed
+  under the cursor; the first is what persists after the toast has gone.
+- **A failure is never dressed as a success.** `navigator.clipboard` is absent on an insecure origin
+  (`unsupported`) and can be refused outright (`refused`); either way the button keeps offering the copy and the
+  toast reads "Could not copy — select the text and copy it manually." The two kinds stay separate in
+  `lib/clipboard.ts` even though the UI treats them alike, because the wording that would help differs and a
+  caller should not have to change the module to draw that line. `document.execCommand('copy')` is not used as
+  a fallback: deprecated, needs a real selection, and the origins where it would be the only option are ones
+  this site is never served from.
+- **The toast is a provider, mounted in `main.tsx` inside `NavigationProvider` and outside the shell**, for
+  three reasons that are all about there being exactly one: a `position: fixed` card inside `.section-pane`
+  would be positioned against the pane's animating `transform` and would slide with it; a live region has to
+  exist *before* its text to be read reliably; and two callers rendering their own cards would stack them at the
+  same offset. Messages queue nowhere — a second `show` replaces the first and restarts the clock.
+- The region is permanent, `role="status"` (implicit `aria-live="polite"` + `aria-atomic`), `pointer-events-none`
+  because it spans the full width whether or not it holds a card, and positioned by the `toast-anchor` utility:
+  clear of the tab bar and the home-bar inset on a phone, one shell gutter up above `md`.
+- **Auto-dismiss after `TOAST_DISMISS_MS` (4 s) is WCAG 2.2.1-safe only because the toast is never the sole
+  report.** The button keeps its own visible state, so a visitor who misses the card has lost nothing. A toast
+  that carries information nothing else does may not use the timer.
+
 ---
 
 ## 8. Design system
@@ -475,6 +511,10 @@ All of it lives in `src/styles/theme.css` — Tailwind v4 has no JS config file 
   must be emitted regardless.
 - Token names are chosen for the utility they generate: `--color-card` → `bg-card`, `--width-sidebar` →
   `w-sidebar`, `--container-content` → `max-w-content` (1300 px), `--height-tabbar` → `h-tabbar` (55 px).
+- The toast's three additions are the pattern for any future overlay: `--z-index-toast: 950` (between `chat` and
+  `modal`, and asserted in the ladder test), `--animate-toast-in` with its `@keyframes` beside it, and an
+  `@utility toast-anchor` that owns the `bottom` offset — it has to combine `--height-tabbar`,
+  `env(safe-area-inset-bottom)` and a breakpoint, which no arbitrary-value utility expresses in one class.
 - Two palettes of measured hex values, `:root`/`[data-theme="dark"]` and `[data-theme="light"]`, plus a
   `@custom-variant light` so markup can write `light:`. Dark is the default. Every colour comment records its
   real WCAG ratio; one-off shades are derived at the point of use with `color-mix(in oklab, …)` rather than a
@@ -542,6 +582,10 @@ Other things worth knowing before editing content:
   duplicates (DynamoDB, Amazon Bedrock) are legal.
 - Dates are `{ year, month }` with `month` 1-12; a `null` end renders as "Present". All arithmetic is in
   `lib/dates.ts`, and timeline order is **computed from the dates**, not trusted from array order.
+- `InfoItem.copyable` **complements `href`, never replaces it**: a `true` adds a copy button beside the value and
+  leaves whatever link the row already had (§7.8). An empty or whitespace-only value gets no button, for the same
+  reason it gets no link — there is nothing to copy, and a control that copies the empty string reports success
+  for doing nothing.
 - Icons come from the closed `IconName` union in `lib/icons.tsx`; a typo is a build error.
 
 ---
@@ -553,8 +597,9 @@ These are the rules the code is built around. Breaking one is a regression even 
 1. Only the settled pane is reachable — everything else is `inert`, and never `aria-hidden`.
 2. Colour is never the only channel: `StatusDot`'s label *is* the status, `ProgressBar` is `aria-hidden` with
    real text beside it, `ArticleFacts` carries its pairing in size/typeface/position too.
-3. One polite live region per concern, and nothing is announced twice. Route changes and form outcomes each own
-   one; the form's is inside a pane, and `inert` silences it when that pane is not active.
+3. One polite live region per concern, and nothing is announced twice. Route changes, form outcomes and toasts
+   each own one; the form's is inside a pane, and `inert` silences it when that pane is not active, while the
+   toast's is outside the shell so it can speak whichever section raised it (§7.8).
 4. Icon-only controls always have an accessible name; a control with visible text uses that text as its name
    (WCAG 2.5.3); an external link says a new tab is coming.
 5. Nothing is `disabled` while busy — `readOnly` + `aria-disabled` instead.
@@ -563,6 +608,8 @@ These are the rules the code is built around. Breaking one is a regression even 
 8. Skip link first in the DOM, moved out of sight by transform (not `sr-only`, which would set
    `position: static` and fight the visible state's `absolute`), targeting whichever pane is on stage.
 9. Hit targets: the sidebar's contact rows use `py-1` to reach 28 px (SC 2.5.8), tab bar items clear 44 px.
+   `ArticleInfoList`'s links take the stricter 44 px (SC 2.5.5); the copy button beside one is 36 px, which is
+   the figure for a control sitting next to a value rather than standing alone.
 10. `<Collapsible>` is a `<button aria-expanded aria-controls>` + panel, not `<details>` — `<details>` cannot
     animate its height and its accessible name is scraped unreliably from a rich `<summary>`. It works
     uncontrolled *or* controlled (`open` + `onOpenChange`, which ignores `defaultOpen` and never flips a flag of
@@ -580,16 +627,18 @@ by anything else.
 
 ## 11. Testing
 
-500 tests in 26 files, co-located beside the code they cover. Rough distribution:
+540 tests in 29 files, co-located beside the code they cover (3 of them skip while the contact form is off —
+§7.5). Rough distribution:
 
 | Area | Tests | What is actually pinned |
 |---|---|---|
-| `lib/` machines (`contactForm` 34, `dates` 30, `reveal` 29, `contact` 27, `richtext` 19, `transition` 19, `head` 7) | 165 | reducer transitions, reference equality, validation, month arithmetic, token parsing, tag upserts, the reveal band's geometry and which reflows it refuses |
-| `components/articles/` (7 files) | 144 | rendering per article kind, timeline ordering + disclosure, form a11y wiring and every failure path |
-| `components/ui/` (8 files) | 126 | naming rules, variants, controlled vs uncontrolled disclosure, the `className`-vs-Tailwind-order trap |
+| `lib/` machines (`contactForm` 34, `dates` 30, `reveal` 29, `contact` 27, `richtext` 19, `transition` 19, `head` 7, `clipboard` 5) | 170 | reducer transitions, reference equality, validation, month arithmetic, token parsing, tag upserts, the reveal band's geometry and which reflows it refuses, the two clipboard failures staying distinguishable |
+| `components/articles/` (7 files) | 155 | rendering per article kind, timeline ordering + disclosure, form a11y wiring and every failure path, the copyable row |
+| `components/ui/` (9 files) | 138 | naming rules, variants, controlled vs uncontrolled disclosure, the `className`-vs-Tailwind-order trap, that a copy never claims more than it did |
 | `content/sections.test.ts` | 25 | the registry's own invariants — id pattern, exactly one `/`, path uniqueness |
 | `components/shell/` (`AppShell` 19, `SectionStage` 4) | 23 | shell branch per breakpoint, unique landmark names, the sidebar↔navbar link, stage wiring |
 | `styles/theme.node.test.ts` | 17 | **cross-file drift**: CSS timings vs TS constants, `@theme static`, z-index order, both palettes having the same variables, `theme-color` vs palette, absolute URLs vs `SITE_ORIGIN`, that the preloaded font file exists |
+| `providers/ToastProvider.test.tsx` | 12 | the region outliving its messages, replacement rather than stacking, each message getting the full reading time |
 
 **The thinnest area is `shell/`.** Only `AppShell` and `SectionStage` have their own test files; `Sidebar`,
 `Navbar`, `TabBar`, `MobileHeader`, `SectionLink` and `Section` are covered only as far as rendering
@@ -608,6 +657,19 @@ in `beforeEach`, `vi.unstubAllGlobals()` in `afterEach`). A crossing is addresse
 target, because §7.7 gives each row two observers, and delivering an event to the wrong region would pass or fail
 for a reason the test never stated. jsdom computes no layout, so the rects are the test's own fiction — which is
 why the thresholds in `reveal.ts` are exported as functions over a rect rather than hidden inside the callback.
+
+`test/clipboard.ts` is the third helper: `stubClipboard()` / `restoreClipboard()`. jsdom has no
+`navigator.clipboard`, and that absence is left in place by default because it is a real production state (an
+insecure origin) and the `unsupported` branch of `lib/clipboard.ts` — so a test about a *successful* copy has to
+ask for one. **Two traps worth knowing.** `userEvent.setup()` attaches a clipboard stub of its own to the window,
+so `stubClipboard()` must be called *after* it or the assertions run against a mock nothing ever touched
+(`ArticleInfoList.test.tsx`'s `session()` helper exists for exactly this). And with Vitest's fake timers on,
+Testing Library's `waitFor` polls a real interval it cannot detect and will hang — the toast and `CopyButton`
+suites use `fireEvent` inside `await act` and advance the clock by hand instead.
+
+Anything that renders a `copyable` row needs `<ToastProvider>` in the tree, because `useToast` throws outside
+it — `AppShell`, `SectionStage`, `ArticleBody` and `ArticleInfoList` all wrap their render helpers in one
+unconditionally, so which article kinds reach for a provider is not something each suite has to track.
 
 `theme.node.test.ts` is the odd one out: it reads `theme.css` and `index.html` off disk with `node:fs`, because
 what it checks is the *source*, not any rendered output. Vitest runs test files in Node regardless of
@@ -678,8 +740,9 @@ neither stack has been deployed yet, so nothing is live.
 
 The chat panel must drop in without a re-layout, and the hooks for it already exist:
 
-- The z-index ladder is fixed and emitted: `shell: 40`, `tabbar: 50`, `chat: 900`, `modal: 1000`,
-  `preloader: 1100`. Ordering never has to be renegotiated.
+- The z-index ladder is fixed and emitted: `shell: 40`, `tabbar: 50`, `chat: 900`, `toast: 950`, `modal: 1000`,
+  `preloader: 1100`. Ordering never has to be renegotiated. The toast sits above the launcher on purpose — a
+  message reporting an outcome is worth nothing behind the thing covering it.
 - The launcher's home is the bottom-right of the stage, outside any pane's scroll container. On mobile it must
   clear the 55 px tab bar.
 - Expanded, the panel overlays as a right-hand drawer rather than resizing the stage — resizing would reflow
@@ -688,8 +751,9 @@ The chat panel must drop in without a re-layout, and the hooks for it already ex
   `knowledge/`.
 - Content strings stay plain text with only `{{}}`/`[[]]` tokens, so the same words can be fed to the RAG corpus
   verbatim.
-- `#route-announcer` is now *an* id rather than "the only live region", because the form owns one too. Any third
-  one needs the same care about who speaks when.
+- `#route-announcer` is now *an* id rather than "the only live region", because the form owns one and the toast
+  owns one. A fourth needs the same care about who speaks when — and a chat panel that wants to announce should
+  ask whether the toast surface already does the job (§7.8).
 
 ---
 
@@ -718,6 +782,14 @@ where a row counts as gone — the pin expiring, not a collapse. Keep them whole
 arithmetic prints them verbatim) and keep `openAt` well clear of 100, or the hold zone that stops a pushed-down
 row folding back disappears. Three tests in `reveal.test.tsx` state the numbers on purpose, so retuning is a
 deliberate edit rather than drift.
+
+**Make an `infoList` row copyable:** `copyable: true` on the item in `content/*.ts`. The button, both its
+strings and the toast follow from the row's `label` (§7.8); nothing in `components/` needs editing. A row whose
+value is RichText is copied stripped, so the clipboard gets what the row displays.
+
+**Raise a toast from somewhere new:** `useToast().show(sentence)` — but read §7.8 first. A toast dismisses
+itself, so it may not be the only place an outcome is reported, and there is one surface: your message replaces
+whatever is on screen.
 
 **Add a provider:** add its hook name to the `react-refresh/only-export-components` allow-list in
 `eslint.config.js`. That speed bump is intentional.

@@ -115,12 +115,36 @@
      namespace is real, so this also spells the `ease-section` utility. */
   --ease-section: cubic-bezier(0.22, 1, 0.36, 1);
 
+  /* The toast's entrance (providers/ToastProvider.tsx). Fast and small: it is a
+     confirmation of something the visitor just did, so it should arrive rather
+     than perform. `--animate-*` is a real Tailwind namespace, so this spells the
+     `animate-toast-in` utility, and the @keyframes has to live inside @theme for
+     the two to be emitted together.
+
+     No reduced-motion branch is needed here — the media query at the bottom of
+     this file collapses every animation to 0.01ms, which lands the card in place
+     with no travel at all. */
+  --animate-toast-in: toast-in 200ms var(--ease-section);
+
+  @keyframes toast-in {
+    from {
+      opacity: 0;
+      /* Up, not down: the card enters from the direction it is anchored to, so
+         it reads as rising off the bottom edge rather than dropping past it. */
+      transform: translateY(0.5rem);
+    }
+  }
+
   /* Phase 2 seam (§8) — fixed now so ordering is never renegotiated.
      The --z-index-* namespace is what makes `z-shell`, `z-tabbar`, … real
      Tailwind utilities rather than arbitrary values. */
   --z-index-shell: 40;
   --z-index-tabbar: 50;
   --z-index-chat: 900;
+  /* Above the chat panel Phase 2 will dock at the same corner — a toast that
+     lands behind the thing that raised it is not a notification — and below a
+     modal, which is the one surface entitled to cover everything. */
+  --z-index-toast: 950;
   --z-index-modal: 1000;
   --z-index-preloader: 1100;
 
@@ -363,6 +387,26 @@
   padding-bottom: calc(
     var(--height-tabbar) + env(safe-area-inset-bottom) + var(--spacing-shell-mobile)
   );
+}
+
+/* Where the toast sits (providers/ToastProvider.tsx). Same reasoning as
+   `shell-bottom-gap` above, on `bottom` instead of `padding-bottom`: below `md`
+   the fixed tab bar owns the bottom of the viewport, and a toast under it is a
+   toast nobody reads.
+
+   The breakpoint is spelled as a media query rather than left to a `md:` utility
+   in the markup, because the two offsets are one decision — "clear whatever is at
+   the bottom edge" — and splitting them across a class attribute invites one to
+   be changed without the other. 48rem is Tailwind's `md`, the same pixel
+   AppShell switches its chrome on. */
+@utility toast-anchor {
+  bottom: calc(
+    var(--height-tabbar) + env(safe-area-inset-bottom) + var(--spacing-shell-mobile)
+  );
+
+  @media (width >= 48rem) {
+    bottom: var(--spacing-shell);
+  }
 }
 
 /* ---------------------------------------------------------------------------

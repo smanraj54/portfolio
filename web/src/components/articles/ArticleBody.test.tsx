@@ -18,9 +18,25 @@ import { describe, expect, it } from 'vitest'
 import { ArticleBody } from '@/components/articles/ArticleBody'
 import { CONTACT_FORM_ENABLED, contactFormArticle } from '@/content/contact'
 import { SECTIONS } from '@/content/sections'
+import { ToastProvider } from '@/providers/ToastProvider'
 import type { Article, ArticleKind } from '@/types/content'
 
 const ALL_ARTICLES: Article[] = SECTIONS.flatMap((section) => section.articles)
+
+/**
+ * Inside <ToastProvider>, because an `infoList` row may carry a CopyButton and
+ * that control requires the toast surface it announces into. Every article goes
+ * through the same wrapper rather than only the ones that need it: which kinds
+ * reach for a provider is exactly the sort of thing this file should not have to
+ * track, since it renders whatever the content happens to hold.
+ */
+function renderArticle(article: Article) {
+  return render(
+    <ToastProvider>
+      <ArticleBody article={article} />
+    </ToastProvider>,
+  )
+}
 
 function articlesOfKind<K extends ArticleKind>(kind: K): Extract<Article, { kind: K }>[] {
   return ALL_ARTICLES.filter(
@@ -31,7 +47,7 @@ function articlesOfKind<K extends ArticleKind>(kind: K): Extract<Article, { kind
 describe('<ArticleBody>', () => {
   it('renders every article the site ships, each anchored by its own id', () => {
     for (const article of ALL_ARTICLES) {
-      const { container, unmount } = render(<ArticleBody article={article} />)
+      const { container, unmount } = renderArticle(article)
 
       // The `id` is the fragment target Phase 2 cites. A renderer that dropped
       // it would still look right on screen, so it is asserted here for all six
@@ -71,7 +87,7 @@ describe('<ArticleBody>', () => {
    */
   it('sends a text article to the prose renderer', () => {
     const [article] = articlesOfKind('text')
-    render(<ArticleBody article={article} />)
+    renderArticle(article)
 
     // The portrait is <ArticleText>'s alone; no other renderer emits an <img>.
     expect(screen.getByRole('img')).toBeInTheDocument()
@@ -80,14 +96,14 @@ describe('<ArticleBody>', () => {
 
   it('sends a facts article to the stat-card renderer', () => {
     const [article] = articlesOfKind('facts')
-    render(<ArticleBody article={article} />)
+    renderArticle(article)
 
     expect(screen.getAllByRole('listitem')).toHaveLength(article.items.length)
   })
 
   it('sends a timeline article to the ordered-list renderer', () => {
     const [article] = articlesOfKind('timeline')
-    const { container } = render(<ArticleBody article={article} />)
+    const { container } = renderArticle(article)
 
     // An <ol> is the timeline's signature — §6.3's ordering claim — and no other
     // renderer emits one.
@@ -98,7 +114,7 @@ describe('<ArticleBody>', () => {
 
   it('sends a skills article to the years-and-level renderer', () => {
     const [article] = articlesOfKind('skills')
-    render(<ArticleBody article={article} />)
+    renderArticle(article)
 
     // The provisional body printed "1 yrs" for every one-year skill. Asserting
     // the singular is what pins the delegation to the real renderer, because the
@@ -113,7 +129,7 @@ describe('<ArticleBody>', () => {
 
   it('sends an infoList article to the description-list renderer', () => {
     const [article] = articlesOfKind('infoList')
-    const { container } = render(<ArticleBody article={article} />)
+    const { container } = renderArticle(article)
 
     expect(container.querySelector('dl')).not.toBeNull()
     expect(container.querySelectorAll('dt')).toHaveLength(article.items.length)
@@ -124,7 +140,7 @@ describe('<ArticleBody>', () => {
     // any section while CONTACT_FORM_ENABLED is off, and the registry's branch for
     // it should keep being exercised regardless — it is the article the site will
     // ship again, not a fixture.
-    render(<ArticleBody article={contactFormArticle} />)
+    renderArticle(contactFormArticle)
 
     // A NAMED form landmark is the signature: a `<form>` only gets the `form`
     // role when it has an accessible name, and no other renderer emits one at

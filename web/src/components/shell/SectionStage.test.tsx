@@ -22,6 +22,7 @@ import { SECTIONS } from '@/content/sections'
 import { sectionDomId } from '@/lib/dom'
 import { NavigationProvider } from '@/providers/NavigationProvider'
 import { ThemeProvider } from '@/providers/ThemeProvider'
+import { ToastProvider } from '@/providers/ToastProvider'
 import { ViewportProvider } from '@/providers/ViewportProvider'
 import type { SectionId } from '@/types/content'
 
@@ -31,7 +32,10 @@ function renderStage(initialPath = '/') {
       <ThemeProvider>
         <MemoryRouter initialEntries={[initialPath]}>
           <NavigationProvider>
-            <SectionStage />
+            {/* Contact's channels carry a CopyButton, which requires it. */}
+            <ToastProvider>
+              <SectionStage />
+            </ToastProvider>
           </NavigationProvider>
         </MemoryRouter>
       </ThemeProvider>

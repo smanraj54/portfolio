@@ -43,10 +43,17 @@
  *   4. Links are underlined and an external one also carries an arrow glyph, so
  *      "this is a link" and "this one leaves the site" are both readable without
  *      seeing the accent colour (WCAG 1.4.1).
+ *
+ *   5. A `copyable` row also gets a copy button at its right-hand edge, inside the
+ *      <dd>. Inside, because a <dl> that groups its pairs in <div>s may contain
+ *      nothing but <dt> and <dd> at that level — a wrapper around the pair's value
+ *      and its button would be markup the content model rejects — and because the
+ *      button belongs to the value rather than to the row.
  */
 import clsx from 'clsx'
+import { CopyButton } from '@/components/ui/CopyButton'
 import { Icon } from '@/lib/icons'
-import { RichText } from '@/lib/richtext'
+import { RichText, stripRichText } from '@/lib/richtext'
 import type { ArticleOf, InfoItem } from '@/types/content'
 
 export interface ArticleInfoListProps {
@@ -133,6 +140,16 @@ interface RowIds {
 function rowIds(articleId: string, itemId: string): RowIds {
   const row = `${articleId}-${itemId}`
   return { label: `${row}-label`, value: `${row}-value`, note: `${row}-note` }
+}
+
+/**
+ * True when the row should carry a copy button. Content asks for one, but an
+ * empty value is refused for the same reason `InfoValue` refuses to link one:
+ * there is nothing to put on the clipboard, and a control that copies the empty
+ * string reports success for having done nothing.
+ */
+function isCopyable(item: InfoItem): boolean {
+  return item.copyable === true && item.value.trim() !== ''
 }
 
 function InfoValue({ item, ids }: { item: InfoItem; ids: RowIds }) {
@@ -238,7 +255,37 @@ export function ArticleInfoList({ article }: ArticleInfoListProps) {
                   {item.label}
                 </dt>
                 <dd className={VALUE}>
-                  <InfoValue item={item} ids={ids} />
+                  {isCopyable(item) ? (
+                    /*
+                      `justify-between` rather than a margin on the button: the
+                      value is the flexible item and the button is fixed, so the
+                      gap between them is whatever the row has spare, and the
+                      glyph stays pinned to the right edge as the address wraps.
+
+                      `min-w-0` on the value's own box, because a flex item will
+                      not shrink below its min-content width without it — and the
+                      whole point of `wrap-anywhere` on the <dd> is that a long
+                      address must be allowed to.
+                    */
+                    <span className="flex items-center justify-between gap-2">
+                      <span className="min-w-0">
+                        <InfoValue item={item} ids={ids} />
+                      </span>
+                      <CopyButton
+                        // Stripped, not raw: `value` is RichText, and the
+                        // clipboard should get what the row displays rather than
+                        // the `{{…}}` that produced it.
+                        value={stripRichText(item.value)}
+                        // Both strings are composed from the row's own label, so
+                        // the wording follows the content and this component
+                        // knows nothing about what kind of value it is copying.
+                        label={`Copy ${item.label}`}
+                        copiedMessage={`${item.label} copied to clipboard`}
+                      />
+                    </span>
+                  ) : (
+                    <InfoValue item={item} ids={ids} />
+                  )}
                 </dd>
               </div>
             )

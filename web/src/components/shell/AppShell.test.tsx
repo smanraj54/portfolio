@@ -31,6 +31,7 @@ import { sectionDomId } from '@/lib/dom'
 import { SECTION_DURATION_MS, SectionStatus } from '@/lib/transition'
 import { NavigationProvider } from '@/providers/NavigationProvider'
 import { ThemeProvider } from '@/providers/ThemeProvider'
+import { ToastProvider } from '@/providers/ToastProvider'
 import { ViewportProvider } from '@/providers/ViewportProvider'
 import { setMatchMedia } from '@/test/setup'
 import type { SectionId } from '@/types/content'
@@ -102,8 +103,12 @@ function renderShell(initialPath = '/') {
       <ThemeProvider>
         <MemoryRouter initialEntries={[initialPath]}>
           <NavigationProvider>
-            <HistoryControls />
-            <AppShell />
+            {/* The same order as main.tsx. Required rather than optional: the
+                Contact channels carry a CopyButton, which throws without it. */}
+            <ToastProvider>
+              <HistoryControls />
+              <AppShell />
+            </ToastProvider>
           </NavigationProvider>
         </MemoryRouter>
       </ThemeProvider>

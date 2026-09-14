@@ -94,6 +94,17 @@ export interface InfoItem {
   icon?: IconName
   /** Renders the value as a link when set. */
   href?: string
+  /**
+   * Adds a copy button at the right of the row, which puts the value — with any
+   * RichText stripped — on the clipboard.
+   *
+   * For rows whose value a visitor needs *as a string* rather than as a
+   * destination: an email address gets typed into a form the site does not own,
+   * whereas a `mailto:` link only helps someone whose mail client is the one the
+   * browser will open. The two are not alternatives, so this does not replace the
+   * `href`; both live in the same row.
+   */
+  copyable?: boolean
 }
 
 export type Proficiency = 'Advanced' | 'Proficient' | 'Working' | 'Familiar'

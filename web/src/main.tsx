@@ -12,6 +12,10 @@
  *                      useNavigate.
  *   NavigationProvider owns the URL ↔ section machine and the live region, so it
  *                      wraps everything that renders a section or links to one.
+ *   ToastProvider      innermost, because it depends on nothing and nothing
+ *                      depends on its position — but it must be above the shell
+ *                      rather than inside a section, since a `fixed` card inside
+ *                      a pane is positioned against the pane's own transform.
  *
  * `StrictMode` stays on. Its double-invoked effects are exactly what would catch
  * a transition timer or a rAF handle that is not cleaned up, and the transition
@@ -23,6 +27,7 @@ import { BrowserRouter } from 'react-router-dom'
 import { App } from '@/App'
 import { NavigationProvider } from '@/providers/NavigationProvider'
 import { ThemeProvider } from '@/providers/ThemeProvider'
+import { ToastProvider } from '@/providers/ToastProvider'
 import { ViewportProvider } from '@/providers/ViewportProvider'
 import './styles/theme.css'
 
@@ -37,7 +42,9 @@ createRoot(container).render(
       <ThemeProvider>
         <BrowserRouter>
           <NavigationProvider>
-            <App />
+            <ToastProvider>
+              <App />
+            </ToastProvider>
           </NavigationProvider>
         </BrowserRouter>
       </ThemeProvider>

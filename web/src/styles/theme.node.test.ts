@@ -91,7 +91,11 @@ describe('@theme emission', () => {
     const z = (name: string) => Number(token(`z-index-${name}`))
     expect(z('shell')).toBeLessThan(z('tabbar'))
     expect(z('tabbar')).toBeLessThan(z('chat'))
-    expect(z('chat')).toBeLessThan(z('modal'))
+    // The toast sits above the chat launcher — it reports the outcome of an
+    // action and is worth nothing behind the thing it would be hidden by — and
+    // below a modal, which is the one surface allowed to own the screen.
+    expect(z('chat')).toBeLessThan(z('toast'))
+    expect(z('toast')).toBeLessThan(z('modal'))
     expect(z('modal')).toBeLessThan(z('preloader'))
   })
 })

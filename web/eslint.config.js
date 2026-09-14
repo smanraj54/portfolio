@@ -67,12 +67,26 @@ export default defineConfig([
      * Listed by name rather than switching the rule off, so the rule still
      * catches an unrelated export sneaking in. Adding a provider means adding
      * its hook here, which is a deliberate speed bump.
+     *
+     * TOAST_DISMISS_MS is the one non-hook name on the list. It is the timing the
+     * dismiss effect two lines below it runs on, and its test asserts against the
+     * constant rather than a literal 4000 — the drift lib/transition.ts exists to
+     * prevent. A separate module for one number the provider owns would put the
+     * value further from the effect than the effect is from the bug.
      */
     files: ['src/providers/**/*.tsx'],
     rules: {
       'react-refresh/only-export-components': [
         'error',
-        { allowExportNames: ['useTheme', 'useViewport', 'useSectionNavigation'] },
+        {
+          allowExportNames: [
+            'useTheme',
+            'useViewport',
+            'useSectionNavigation',
+            'useToast',
+            'TOAST_DISMISS_MS',
+          ],
+        },
       ],
     },
   },
