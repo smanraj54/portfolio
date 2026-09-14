@@ -11,6 +11,7 @@
  * a thousand lines across six files.
  */
 import { describe, expect, it } from 'vitest'
+import { CONTACT_FORM_ENABLED } from '@/content/contact'
 import {
   HOME_SECTION_ID,
   SECTIONS,
@@ -83,15 +84,25 @@ describe('layout', () => {
     // else. The other four are asserted as *absent* rather than as 'stack':
     // writing the default out four times is four chances for one of them to
     // drift, and SectionStage resolves `undefined` to the same string anyway.
+    //
+    // Contact only splits while it has a second article to put in the second
+    // column, so the expectation follows the form's flag: with the form off,
+    // Contact is `undefined` like the rest and stacks.
+    const contactLayout = CONTACT_FORM_ENABLED ? 'split' : undefined
     for (const section of SECTIONS) {
-      expect(section.layout, section.id).toBe(section.id === 'contact' ? 'split' : undefined)
+      expect(section.layout, section.id).toBe(section.id === 'contact' ? contactLayout : undefined)
     }
   })
 
-  it('gives every split section exactly two articles', () => {
+  it.skipIf(!CONTACT_FORM_ENABLED)('gives every split section exactly two articles', () => {
     // Two equal columns from `lg` up, so a third article would drop onto a
     // second row beneath the shorter column with the other half of the row
     // empty — which is a layout nobody asked for rather than a wider one.
+    //
+    // Skipped while the contact form is off, because Contact is the only split
+    // section and the `toBeGreaterThan(0)` guard below is the point of the test:
+    // weakening it to pass vacuously would leave nothing asserted when the form
+    // comes back.
     const split = SECTIONS.filter((section) => section.layout === 'split')
     expect(split.length).toBeGreaterThan(0)
     for (const section of split) {
@@ -239,9 +250,13 @@ describe('skills content', () => {
 })
 
 describe('articles', () => {
-  it('renders exactly one contact form site-wide', () => {
+  it('renders the contact form at most once site-wide, and only when enabled', () => {
+    // One form when it is switched on, none while it is not: the form owns a set
+    // of DOM ids derived from its article id, so a second copy would duplicate
+    // them, and a copy left behind after CONTACT_FORM_ENABLED went false would
+    // put a dead form on the page.
     const forms = ARTICLES.filter((article) => article.kind === 'contactForm')
-    expect(forms).toHaveLength(1)
+    expect(forms).toHaveLength(CONTACT_FORM_ENABLED ? 1 : 0)
   })
 
   it('has no article that would render an empty card', () => {

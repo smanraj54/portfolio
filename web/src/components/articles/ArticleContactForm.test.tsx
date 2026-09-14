@@ -26,7 +26,7 @@ import axe from 'axe-core'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import type { UserEvent } from '@testing-library/user-event'
 import { ArticleContactForm } from '@/components/articles/ArticleContactForm'
-import { SECTIONS } from '@/content/sections'
+import { contactFormArticle } from '@/content/contact'
 import {
   CONTACT_FIELD_ORDER,
   FIELD_LABELS,
@@ -41,10 +41,12 @@ import type { ArticleOf } from '@/types/content'
  * what every derived DOM id below is built from, and its title is the form
  * landmark's accessible name, so a content edit that broke either should fail
  * here rather than only in production.
+ *
+ * Imported from content/contact.ts rather than found in SECTIONS: while
+ * `CONTACT_FORM_ENABLED` is off the form is in no section, and this suite is what
+ * keeps it working in the meantime.
  */
-const [ARTICLE] = SECTIONS.flatMap((section) => section.articles).filter(
-  (article): article is ArticleOf<'contactForm'> => article.kind === 'contactForm',
-)
+const ARTICLE: ArticleOf<'contactForm'> = contactFormArticle
 
 const VALID: ContactInput = {
   name: 'Ada Lovelace',

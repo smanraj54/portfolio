@@ -22,7 +22,7 @@
  * RichText tokens must never reach the title bar.
  */
 import { aboutArticles } from '@/content/about'
-import { contactArticles } from '@/content/contact'
+import { CONTACT_FORM_ENABLED, contactArticles } from '@/content/contact'
 import { educationArticles } from '@/content/education'
 import { experienceArticles } from '@/content/experience'
 import { skillsArticles } from '@/content/skills'
@@ -86,13 +86,23 @@ export const SECTIONS: readonly SectionDef[] = [
     titlePrefix: 'Say hello',
     titleLong: 'Get in {{touch}}',
     titleShort: 'Contact me',
-    description:
-      'Get in touch with Manraj Singh by email, phone or LinkedIn, or send a message straight from the page.',
+    // The meta description promises what the page delivers, so the clause about
+    // the form goes away with the form rather than advertising something a
+    // visitor arriving from a search result would not find.
+    description: CONTACT_FORM_ENABLED
+      ? 'Get in touch with Manraj Singh by email, phone or LinkedIn, or send a message straight from the page.'
+      : 'Get in touch with Manraj Singh by email, phone, LinkedIn or GitHub — the direct channels, all on one page.',
     icon: 'contact',
     // The only section that is not one column: §6.4 puts the form on the left and
     // the direct channels on the right. content/contact.ts already describes the
     // pair in those terms; this is the line that delivers it.
-    layout: 'split',
+    //
+    // Spread rather than stated, because the split only makes sense with both
+    // articles in it. While `CONTACT_FORM_ENABLED` is off the section ships the
+    // channels alone, and a lone card in a two-column grid would sit at half
+    // width with the other half empty — so the key is absent entirely and
+    // SectionStage falls back to 'stack'.
+    ...(CONTACT_FORM_ENABLED ? { layout: 'split' as const } : {}),
     articles: contactArticles,
   },
 ]

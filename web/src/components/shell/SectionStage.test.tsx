@@ -17,6 +17,7 @@ import { render } from '@testing-library/react'
 import { MemoryRouter } from 'react-router-dom'
 import { describe, expect, it } from 'vitest'
 import { SectionStage } from '@/components/shell/SectionStage'
+import { CONTACT_FORM_ENABLED } from '@/content/contact'
 import { SECTIONS } from '@/content/sections'
 import { sectionDomId } from '@/lib/dom'
 import { NavigationProvider } from '@/providers/NavigationProvider'
@@ -53,6 +54,17 @@ function articleContainer(id: SectionId): HTMLElement {
   return container
 }
 
+/**
+ * The two tests that need a section whose `layout` is 'split'. Contact is the
+ * only one, and it stops being split while `CONTACT_FORM_ENABLED` is off and it
+ * ships a single article (content/contact.ts) — so they are skipped rather than
+ * rewritten against a fixture. SectionStage reads SECTIONS directly, so a fixture
+ * would mean mocking the content module, and what these two assert is precisely
+ * the real content reaching the right container. They run again, unchanged, when
+ * the form comes back.
+ */
+const itSplit = it.skipIf(!CONTACT_FORM_ENABLED)
+
 describe('<SectionStage> layout', () => {
   it('stacks a section with no layout stated', () => {
     renderStage()
@@ -62,7 +74,7 @@ describe('<SectionStage> layout', () => {
     expect(container).not.toHaveClass('grid')
   })
 
-  it('gives the split section two columns from lg up and one below', () => {
+  itSplit('gives the split section two columns from lg up and one below', () => {
     renderStage()
 
     const container = articleContainer('contact')
@@ -74,7 +86,7 @@ describe('<SectionStage> layout', () => {
     expect(container).not.toHaveClass('flex-col')
   })
 
-  it('keeps both split articles in the same container, in content order', () => {
+  itSplit('keeps both split articles in the same container, in content order', () => {
     // Two columns only happen if the pair are siblings in one grid. Rendering
     // each article in its own wrapper would look identical while stacking.
     renderStage()

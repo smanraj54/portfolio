@@ -16,6 +16,7 @@
 import { render, screen } from '@testing-library/react'
 import { describe, expect, it } from 'vitest'
 import { ArticleBody } from '@/components/articles/ArticleBody'
+import { CONTACT_FORM_ENABLED, contactFormArticle } from '@/content/contact'
 import { SECTIONS } from '@/content/sections'
 import type { Article, ArticleKind } from '@/types/content'
 
@@ -44,15 +45,21 @@ describe('<ArticleBody>', () => {
     // Guards the other direction from the `never` branch: that guard fails the
     // build when a kind has no branch, and this fails when a kind has a branch
     // nothing exercises — which is how a renderer stays wired to a placeholder.
+    //
+    // 'contactForm' is in the content only while CONTACT_FORM_ENABLED is on. Its
+    // branch is still covered either way — the delegation test at the bottom of
+    // this file renders `contactFormArticle` directly.
     const kinds = new Set(ALL_ARTICLES.map((article) => article.kind))
-    expect([...kinds].sort()).toEqual([
-      'contactForm',
-      'facts',
-      'infoList',
-      'skills',
-      'text',
-      'timeline',
-    ])
+    expect([...kinds].sort()).toEqual(
+      [
+        ...(CONTACT_FORM_ENABLED ? (['contactForm'] as const) : []),
+        'facts',
+        'infoList',
+        'skills',
+        'text',
+        'timeline',
+      ].sort(),
+    )
   })
 
   /*
@@ -113,8 +120,11 @@ describe('<ArticleBody>', () => {
   })
 
   it('sends a contactForm article to the form renderer', () => {
-    const [article] = articlesOfKind('contactForm')
-    render(<ArticleBody article={article} />)
+    // Read from content/contact.ts rather than from SECTIONS: the form is not in
+    // any section while CONTACT_FORM_ENABLED is off, and the registry's branch for
+    // it should keep being exercised regardless — it is the article the site will
+    // ship again, not a fixture.
+    render(<ArticleBody article={contactFormArticle} />)
 
     // A NAMED form landmark is the signature: a `<form>` only gets the `form`
     // role when it has an accessible name, and no other renderer emits one at

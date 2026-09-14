@@ -219,7 +219,7 @@ machine reads for forward/back:
 | `experience` | `/experience` | Experience | stack | timeline — Ansys, Amazon, Dalhousie TA, Amdocs, Synopsys |
 | `education` | `/education` | Education | stack | timeline — Dalhousie MACS (4 projects), Thapar BE |
 | `skills` | `/skills` | Skills | stack | skills — 8 groups / 78 entries, years + one of 4 proficiency words per skill |
-| `contact` | `/contact` | Contact me | **split** | contactForm + infoList ("Direct channels") |
+| `contact` | `/contact` | Contact me | stack (**split** when the form is on) | infoList ("Direct channels") — contactForm is switched off, see §7.5 |
 
 Notes that matter when editing:
 
@@ -354,6 +354,15 @@ the shell would be cropped until scrolled, and `dvh` tracks the address bar and 
 mid-scroll.
 
 ### 7.5 Contact form
+
+> **Currently not rendered** (since 2026-09-14). `CONTACT_FORM_ENABLED` in `content/contact.ts` is `false`
+> because no backend receives a submission yet, so Contact ships the direct channels alone, in one column.
+> Everything below still exists and stays under test; the flag going `true` restores the form as it was. Two
+> things are wired to the flag rather than edited by hand: the section's `split` layout and its meta description
+> (`content/sections.ts`), and the three tests that assert the split or the form's presence, which skip while it
+> is off (`content/sections.test.ts`, `components/shell/SectionStage.test.tsx`). The suites for `lib/contact.ts`,
+> `lib/contactForm.ts` and `ArticleContactForm` all still run — the component's tests render
+> `contactFormArticle`, exported from `content/contact.ts` for exactly that reason.
 
 Three files, sharply divided: rules and transport in `lib/contact.ts`, state in `lib/contactForm.ts`, markup
 and effects in `components/articles/ArticleContactForm.tsx`.
