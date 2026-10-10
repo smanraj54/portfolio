@@ -69,7 +69,7 @@ Nothing else. Target: **< 150 KB gzipped JS**, one font family set, zero icon we
 | `web/tsconfig.app.json` | Add `paths` for the `@/*` alias so TS and Vite agree. |
 | `web/index.html` | Currently 355 bytes of stock markup. Needs `lang`, title, description, canonical, `theme-color`, Open Graph + Twitter cards, `Person` JSON-LD, and a **no-flash theme script** (§4.3). |
 | `web/eslint.config.js` | Add `jsx-a11y` plugin; enable `react-hooks` exhaustive-deps as an error. |
-| `web/public/` | Real favicon set, `og-image.png` (1200×630), `robots.txt`, `sitemap.xml`. Currently stock Vite SVGs. |
+| `web/public/` | Raster favicon sizes (`.ico`, apple-touch, manifest), `og-image.png` (1200×630), `robots.txt`, `sitemap.xml`. `favicon.svg` and `portrait.svg` are the drawn "MS" mark and are done. |
 | `web/src/index.css` / `App.css` | Delete both. Replaced by `src/styles/theme.css`. |
 | `web/src/App.tsx` | Delete stock starter. |
 | `web/src/assets/hero.png` | Replace with the real profile photograph (still missing — see §11). |

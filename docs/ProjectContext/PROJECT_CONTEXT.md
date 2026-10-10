@@ -78,7 +78,7 @@ portfolio/
 │   ├── eslint.config.js      # flat config; exhaustive-deps is an error, not a warning
 │   ├── tsconfig.json         # solution file → app + node + test projects
 │   ├── .env.example
-│   ├── public/               # self-hosted fonts, portrait.svg (placeholder), favicon.svg (stock)
+│   ├── public/               # self-hosted fonts, portrait.svg + favicon.svg (the "MS" monogram mark)
 │   └── src/
 │       ├── main.tsx          # StrictMode → Viewport → Theme → Router → Navigation → App
 │       ├── App.tsx           # canonical-path redirect only; no <Routes>
@@ -264,8 +264,10 @@ the site; the site holds the summary layer and Phase 2 will serve the depth from
 ### 5.2 Personal content
 
 - **One profile photograph**, prominent, in or near the hero. **Still outstanding:** `web/public/portrait.svg`
-  is a placeholder graphic. `profile.photo` points at it, so dropping in a real photo is a one-line change.
-  (`web/src/assets/hero.png` is a stock Vite leftover and is referenced by nothing.)
+  is the drawn "MS" monogram mark, not a photograph — a finished graphic rather than a placeholder artefact,
+  but still not a face. `profile.photo` points at it, so dropping in a real photo is a one-line change (plus
+  removing the `border-transparent bg-transparent` the two `<Avatar>` call sites pass for the monogram's glow
+  gutter). (`web/src/assets/hero.png` is a stock Vite leftover and is referenced by nothing.)
 - The about section is written: an intro, four stat callouts and an "At a glance" list, in
   `web/src/content/about.ts`.
 

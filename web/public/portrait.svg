@@ -1,14 +1,27 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!--
-  Monogram stand-in for the profile photograph.
+  The "MS" monogram mark, on-page size.
 
   Referenced as `profile.photo`, so swapping in a real portrait is one string in
   web/src/content/profile.ts. It is a monogram rather than a "no image" glyph so
-  that the page never looks broken if the photo ships late — an initials avatar
+  that the page never looks broken if a photograph ships late — an initials mark
   is a legitimate final state, not a placeholder artefact.
 
-  Fonts are named with a system fallback chain: an SVG loaded through <img> is a
-  separate document and cannot use the page's @font-face rules.
+  Deliberately drawn, not typeset. The previous version set <text> with a system
+  fallback chain, because an SVG loaded through <img> is a separate document and
+  cannot use the page's @font-face rules — which meant the letterforms, their
+  width and their weight differed on every OS. These are paths, so the mark is
+  the same everywhere and the same as favicon.svg.
+
+  The tile is inset 52 units inside the viewBox and the padding is transparent on
+  purpose: that gutter is where the outer bloom lands. Both call sites therefore
+  pass `border-transparent bg-transparent` to <Avatar>, because a square frame
+  drawn around a rounded tile with a 52-unit gap looks like a mistake. Keep the
+  bloom's blur radius inside that gutter — the root <svg> clips at the viewBox,
+  so a wider blur gets a visible straight cut instead of a falloff.
+
+  favicon.svg is the same geometry with the bloom removed and the tile full
+  bleed; the two share the gradient stops below and must keep sharing them.
 -->
 <svg
   xmlns="http://www.w3.org/2000/svg"
@@ -19,28 +32,120 @@
   aria-label="Monogram: M S"
 >
   <defs>
-    <linearGradient id="surface" x1="0" y1="0" x2="1" y2="1">
-      <stop offset="0" stop-color="#202020" />
-      <stop offset="1" stop-color="#0c0c0c" />
+    <!--
+      The brand ramp: cyan (the site's dark-theme accent, #6FD3E7's neighbour)
+      through violet to pink. userSpaceOnUse, not the default objectBoundingBox,
+      so every consumer below samples the same ramp across the same 512 grid —
+      under objectBoundingBox the rim and the monogram would each re-fit the
+      ramp to their own box and the colours would stop lining up.
+    -->
+    <linearGradient id="ramp" gradientUnits="userSpaceOnUse" x1="54" y1="140" x2="458" y2="372">
+      <stop offset="0" stop-color="#22d3ee" />
+      <stop offset="0.42" stop-color="#7c5cff" />
+      <stop offset="0.72" stop-color="#c64be8" />
+      <stop offset="1" stop-color="#ff4d7e" />
     </linearGradient>
-    <linearGradient id="ink" x1="0" y1="0" x2="1" y2="1">
-      <stop offset="0" stop-color="#6fd3e7" />
-      <stop offset="1" stop-color="#f0b95a" />
+
+    <!-- Near-black, lit from the top-left, so the tile reads as a surface. -->
+    <linearGradient id="tile" gradientUnits="userSpaceOnUse" x1="52" y1="52" x2="460" y2="460">
+      <stop offset="0" stop-color="#232327" />
+      <stop offset="0.55" stop-color="#16161a" />
+      <stop offset="1" stop-color="#0b0b0d" />
     </linearGradient>
+
+    <!-- The sheen on the upper edge. Barely there by design: at 40px (the mobile
+         header) anything stronger turns into a grey band across the top. -->
+    <linearGradient id="sheen" gradientUnits="userSpaceOnUse" x1="256" y1="52" x2="256" y2="300">
+      <stop offset="0" stop-color="#ffffff" stop-opacity="0.09" />
+      <stop offset="1" stop-color="#ffffff" stop-opacity="0" />
+    </linearGradient>
+
+    <!-- Filter regions are explicit: the default -10%/+120% is measured against
+         the filtered element's box, which for a 408-unit tile is narrower than
+         the blur needs. -->
+    <filter id="bloom" x="-20%" y="-20%" width="140%" height="140%">
+      <feGaussianBlur stdDeviation="13" />
+    </filter>
+    <filter id="inkBloom" x="-25%" y="-45%" width="150%" height="190%">
+      <feGaussianBlur stdDeviation="9" />
+    </filter>
   </defs>
 
-  <rect width="512" height="512" fill="url(#surface)" />
-  <circle cx="256" cy="256" r="198" fill="none" stroke="url(#ink)" stroke-width="3" opacity="0.55" />
+  <!-- Outer bloom: the tile's own silhouette, blurred, under everything. This is
+       the glow that needs the transparent gutter. -->
+  <rect
+    x="52"
+    y="52"
+    width="408"
+    height="408"
+    rx="100"
+    fill="url(#ramp)"
+    opacity="0.5"
+    filter="url(#bloom)"
+  />
 
-  <text
-    x="256"
-    y="256"
-    fill="#eeeeee"
-    font-family="'Space Grotesk', 'Inter', system-ui, -apple-system, 'Segoe UI', sans-serif"
-    font-size="190"
-    font-weight="600"
-    letter-spacing="-6"
-    text-anchor="middle"
-    dominant-baseline="central"
-  >MS</text>
+  <rect x="52" y="52" width="408" height="408" rx="100" fill="url(#tile)" />
+  <rect x="52" y="52" width="408" height="408" rx="100" fill="url(#sheen)" />
+
+  <!-- Rim light. Inset by half the stroke so the 5-unit line sits wholly inside
+       the tile rather than straddling its edge and softening the silhouette. -->
+  <rect
+    x="54.5"
+    y="54.5"
+    width="403"
+    height="403"
+    rx="97.5"
+    fill="none"
+    stroke="url(#ramp)"
+    stroke-width="5"
+  />
+
+  <!--
+    The mark. Geometry is authored on the full 512 grid — visual box x 54..458,
+    y 124..388, centred on (256, 256) — and scaled to sit inside the tile, so
+    the numbers in the paths stay round and the padding is one value to tune.
+    0.742 leaves ~13% of the tile as margin on each side.
+  -->
+  <g transform="translate(256 256) scale(0.742) translate(-256 -256)">
+    <!-- Blurred copy beneath: the ink glows rather than merely being coloured. -->
+    <g
+      fill="none"
+      stroke="url(#ramp)"
+      stroke-width="52"
+      stroke-linecap="butt"
+      stroke-linejoin="miter"
+      stroke-miterlimit="1"
+      opacity="0.55"
+      filter="url(#inkBloom)"
+    >
+      <path d="M80 388V150l85 140 85-140v238" />
+      <path
+        d="M432 200Q432 150 370 150Q308 150 308 202Q308 246 370 256Q432 266 432 310Q432 362 370 362Q308 362 308 312"
+      />
+    </g>
+
+    <!--
+      Butt caps, and `stroke-miterlimit="1"` so every join chamfers instead of
+      mitring. Not a detail: the M's shoulders meet at a mitre ratio of ~3.7,
+      which clears the default limit of 4 and therefore spikes ~94 units above
+      the stem — the M then stands visibly taller than the S and the mark reads
+      as "Ms". Chamfered, both letters share a cap line at y=124 and a baseline
+      at y=388, and the flat cuts match the S's sheared terminals (every
+      terminal in the mark ends on a vertical tangent, so a butt cap there is a
+      clean horizontal shear).
+    -->
+    <g
+      fill="none"
+      stroke="url(#ramp)"
+      stroke-width="52"
+      stroke-linecap="butt"
+      stroke-linejoin="miter"
+      stroke-miterlimit="1"
+    >
+      <path d="M80 388V150l85 140 85-140v238" />
+      <path
+        d="M432 200Q432 150 370 150Q308 150 308 202Q308 246 370 256Q432 266 432 310Q432 362 370 362Q308 362 308 312"
+      />
+    </g>
+  </g>
 </svg>

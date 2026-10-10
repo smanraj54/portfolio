@@ -29,7 +29,8 @@ Measured, not estimated:
 | Bundle | `vite build` output | `index.js` 338.40 kB / **109.29 kB gzip**; `index.css` 35.85 kB / 7.74 kB gzip; `es.js` (EmailJS, lazy) 3.48 kB / 1.48 kB gzip; `index.html` 5.44 kB |
 
 Against the UI plan's milestone list (§9 there): **M1–M6 are done.** M7 (preloader, role typer, toggle
-animation) and most of M8 (favicon set, sitemap, Lighthouse pass) are not — see §13 for the exact remainder.
+animation) and most of M8 (the raster favicon sizes, sitemap, Lighthouse pass) are not — see §13 for the exact
+remainder. The SVG favicon itself is done.
 
 One build warning is expected and unresolved: `chunkSizeWarningLimit` is set to 250 kB in `vite.config.ts` as a
 deliberate tripwire, and the main chunk is 338.40 kB uncompressed, so **every build prints the chunk-size
@@ -116,8 +117,8 @@ web/
 ├── .env.example
 ├── public/
 │   ├── fonts/              # 6 woff2 (latin + latin-ext × 3 families) + 3 OFL licences
-│   ├── portrait.svg        # PLACEHOLDER portrait
-│   ├── favicon.svg         # still the stock Vite mark
+│   ├── portrait.svg        # the "MS" monogram mark, on-page size (glow + rim light)
+│   ├── favicon.svg         # same mark, full bleed, no blur — tuned for 16–32px
 │   └── icons.svg           # stock Vite leftover, unreferenced
 └── src/
     ├── main.tsx            # provider order — the one thing here that breaks loudly
@@ -700,11 +701,13 @@ code.
 Nothing here is broken; all of it is unfinished or deliberately deferred.
 
 **Missing assets that `index.html` already references** — these 404 today and will 404 in production:
-`/favicon.ico`, `/apple-touch-icon.png`, `/site.webmanifest`, `/og-image.png`. `public/favicon.svg` is still
-the stock Vite mark.
+`/favicon.ico`, `/apple-touch-icon.png`, `/site.webmanifest`, `/og-image.png`. `public/favicon.svg` is the
+designed "MS" mark and is the only icon `index.html` links; the raster sizes above are still absent.
 
 **Placeholders:**
-- `public/portrait.svg` is a placeholder, not a photograph. `profile.photo` points at it.
+- `public/portrait.svg` is the "MS" monogram mark, not a photograph. `profile.photo` points at it. The mark
+  reserves its outer ~10% as transparent padding for its glow, which is why `Sidebar` and `MobileHeader` pass
+  `border-transparent bg-transparent` to `<Avatar>`; a real photo wants the frame back.
 - `profile.resumeUrl` is `null`, which hides the sidebar's download button. The source résumé in `knowledge/`
   carries a full street address and must be redacted before being served from `public/`.
 

@@ -134,11 +134,21 @@ export function Sidebar() {
         shrunk ? 'w-sidebar-shrunk items-center px-3 py-4' : 'w-sidebar px-5 py-6',
       )}
     >
+      {/*
+        No frame. `profile.photo` is the "MS" monogram tile, which draws its own
+        rounded edge and a rim light, and reserves the outer 10% of its box as
+        transparent padding for the glow — so Avatar's 1px border would sit as a
+        square outline a visible gap away from the tile it is supposed to frame,
+        and `bg-board` would fill that gap with a lighter grey halo. Colour-only
+        overrides, which is what Avatar's `className` is for: the box still
+        comes from `size`. Drop both classes when a real photograph replaces the
+        monogram — a photo needs the frame.
+      */}
       <Avatar
         src={profile.photo}
         alt={profile.photoAlt}
         size={shrunk ? 'md' : 'lg'}
-        className={shrunk ? undefined : 'mx-auto'}
+        className={clsx('border-transparent bg-transparent', !shrunk && 'mx-auto')}
       />
 
       {!shrunk && (

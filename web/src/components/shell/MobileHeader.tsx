@@ -20,7 +20,15 @@ import { profile } from '@/content/profile'
 export function MobileHeader() {
   return (
     <header className="flex items-center gap-3 rounded-card border bg-card px-3 py-2">
-      <Avatar src={profile.photo} alt={profile.photoAlt} size="sm" />
+      {/* Unframed, for the reason spelled out at the same call in Sidebar: the
+          monogram tile draws its own edge and keeps a transparent gutter for
+          its glow. */}
+      <Avatar
+        src={profile.photo}
+        alt={profile.photoAlt}
+        size="sm"
+        className="border-transparent bg-transparent"
+      />
 
       {/* `min-w-0` is what lets the two lines truncate rather than shove the
           theme toggle off the right edge at 320px. */}
