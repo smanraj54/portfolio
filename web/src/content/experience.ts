@@ -29,30 +29,33 @@ export const roles: TimelineItem[] = [
     location: 'Canada',
     dates: { start: { year: 2025, month: 9 }, end: null },
     summary:
-      'I build the cloud-facing side of Ansys simulation products: a {{retrieval-augmented}} assistant over the product documentation, and a web platform that drives the existing native simulation engines from a browser.',
+      'I build the cloud-facing side of Ansys simulation products: a {{retrieval-augmented}} assistant that drafts replies to support tickets, and a web platform that drives the existing native simulation engines from a browser.',
     tags: ['TypeScript', 'Node.js', 'gRPC', 'AWS', 'Amazon Bedrock', 'RAG'],
     projects: [
       {
-        id: 'aedt-doc-copilot',
-        name: 'AEDT Doc Copilot',
+        id: 'ticket-assist',
+        name: 'Ticket Assist',
         framing:
-          'A retrieval assistant in a chat panel inside the application, so a documentation question gets an answer in place instead of a search through the docs or a support ticket.',
+          'A retrieval assistant that drafts replies to support tickets out of the internal runbooks, past tickets and product manuals, and posts the draft into Jira for an agent to review.',
         tags: [
-          'Python',
           'TypeScript',
+          'Python',
           'Amazon Bedrock',
           'OpenSearch',
+          'AWS Step Functions',
           'AWS CDK',
           'RAG',
         ],
         bullets: [
-          'The ingestion pipeline parses each document, chunks it on section boundaries, embeds the chunks and indexes them for {{hybrid retrieval}}, so a query matches on meaning and on exact keyword together.',
-          'Every answer is grounded in the retrieved passages and cites the source page, and the assistant declines when retrieval turns up nothing relevant rather than guessing.',
-          'It runs on AWS behind CloudFront and API Gateway, with the vector index in [[OpenSearch Serverless]] and generation through Amazon Bedrock. The infrastructure is defined in CDK.',
-          'The public endpoint verifies SSO tokens and checks per-tenant entitlements, and AWS {{WAF}} rate limiting bounds query volume per user to cap cost exposure on a metered LLM path.',
+          'The queue it answers against runs {{1,000-2,000 tickets a day}}. It is live for two teams, where low-priority turnaround came down from about seven days to three.',
+          'Ingestion starts in a pull request: GitHub Actions uploads the changed files to S3, an S3 event reaches Step Functions through EventBridge, and Lambdas convert PDF manuals to Markdown, split them into chunks, embed everything with Amazon Titan and index it in OpenSearch. Documentation lands [[through review]], like code.',
+          'Triage starts from a Jira label, which webhooks into API Gateway and opens a second Step Functions workflow. Lambdas fetch the ticket, run {{hybrid keyword and vector search}} in OpenSearch, draft a reply with source links using Claude on Amazon Bedrock, and post it as an internal Jira comment rather than a customer-facing reply — a wrong answer costs an agent a moment instead of reaching the customer.',
+          'DynamoDB records the tickets already handled, so one is never answered twice. Retrieval quality is measured with [[Recall@5 and Recall@10]], and the whole stack is defined in AWS CDK.',
         ],
-        // No `metrics`: the résumé states none for this project, and a made-up
-        // number here would be the least defensible thing on the page.
+        metrics: [
+          { label: 'Ticket volume', value: '1,000-2,000 / day' },
+          { label: 'Low-priority turnaround', value: '~7 days → 3' },
+        ],
       },
       {
         id: 'concept-si',
@@ -92,9 +95,36 @@ export const roles: TimelineItem[] = [
       end: { year: 2025, month: 9 },
     },
     summary:
-      'I worked on Seller Central listing creation and product search, the two paths a seller uses to find a product and get a listing live. Most of the work was pulling latency and throughput ceilings off services that were already in production.',
+      'I worked on Seller Central listing creation, product search and brand selection gaps — the paths a seller uses to find a product and get a listing live. Most of the work was pulling latency and throughput ceilings off services that were already in production.',
     tags: ['Java', 'Spring Boot', 'DynamoDB', 'React', 'TypeScript', 'AWS'],
     projects: [
+      {
+        id: 'explore-brand-selection',
+        name: 'Explore Brand Selection',
+        framing:
+          "A Seller Central and Vendor Central tool that finds a brand's products missing from Amazon, or listed there only by other sellers, and prefills the listings so the brand fills in just what is actually missing.",
+        tags: [
+          'TypeScript',
+          'Java',
+          'React',
+          'GraphQL',
+          'DynamoDB',
+          'Amazon Kinesis',
+          'AWS CDK',
+        ],
+        bullets: [
+          'It is live in {{8 marketplaces}} across NA, EU and FE. The brand adds only the missing details, price and inventory; the rest of the listing arrives prefilled.',
+          'Daily SQL batch jobs join the selection gaps against offer, catalog, feedback and demand data, keep the top {{1,000 gaps}} per brand, and stream about 17M US records a day through Kinesis and Lambda into DynamoDB.',
+          'Throttled DynamoDB batch writes were being dropped after two retries. An SQS dead-letter queue drained by a rate-limited retry Lambda now catches them, and the CloudWatch alarm on queue age is sized from a [[17M-record load test]] rather than guessed at.',
+          'A React app calls an AppSync GraphQL API with one Lambda per operation. DynamoDB is keyed by contributor and marketplace, so a brand’s gaps sit in one partition and sorting, filtering and pagination all run server-side.',
+          'Filters cover 30-day units sold, glance views, search impressions and star ratings, and pre-filled bulk spreadsheets for incomplete seller listings launched behind a weblab.',
+        ],
+        metrics: [
+          { label: 'Marketplaces', value: '8' },
+          { label: 'Daily records', value: '~17M' },
+          { label: 'Gaps per brand', value: 'Top 1,000' },
+        ],
+      },
       {
         id: 'keyword-search',
         name: 'Keyword Search Redesign',
