@@ -1,0 +1,38 @@
+{
+  "about": {
+    "navLabel": "About me",
+    "titlePrefix": "Hello, world",
+    "titleLong": "I'm {{Manraj}}",
+    "titleShort": "About me",
+    "description": "Manraj Singh, senior software engineer in Vancouver, British Columbia: backend and distributed systems, AWS architecture, and retrieval-augmented generation."
+  },
+  "experience": {
+    "navLabel": "Experience",
+    "titlePrefix": "What I have built",
+    "titleLong": "My {{experience}}",
+    "titleShort": "Experience",
+    "description": "Senior engineering roles at Ansys, Amazon and Amdocs, and the systems built at each: RAG assistants, cross-region search, and high-throughput APIs."
+  },
+  "education": {
+    "navLabel": "Education",
+    "titlePrefix": "Where it started",
+    "titleLong": "My {{education}}",
+    "titleShort": "Education",
+    "description": "Master of Applied Computer Science at Dalhousie University, a Bachelor of Engineering from Thapar Institute, and the projects that came out of both."
+  },
+  "skills": {
+    "navLabel": "Skills",
+    "titlePrefix": "What I work with",
+    "titleLong": "My {{skills}}",
+    "titleShort": "Skills",
+    "description": "The languages, frameworks and infrastructure Manraj Singh works in — Java, TypeScript, Python, Spring Boot, React and AWS — with years of use for each."
+  },
+  "contact": {
+    "navLabel": "Contact me",
+    "titlePrefix": "Say hello",
+    "titleLong": "Get in {{touch}}",
+    "titleShort": "Contact me",
+    "description": "Get in touch with Manraj Singh by email, phone, LinkedIn or GitHub — the direct channels, all on one page.",
+    "descriptionWithForm": "Get in touch with Manraj Singh by email, phone or LinkedIn, or send a message straight from the page."
+  }
+}

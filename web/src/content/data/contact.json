@@ -1,0 +1,11 @@
+{
+  "formEnabled": false,
+  "formTitle": "Send a message",
+  "channelsTitle": "Direct channels",
+  "labels": {
+    "email": "Email",
+    "phone": "Phone",
+    "location": "Location"
+  },
+  "socialChannels": ["linkedin", "github"]
+}

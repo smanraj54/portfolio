@@ -85,7 +85,7 @@ export interface Fact {
   icon?: IconName
 }
 
-/** A labelled row, e.g. "Location — Surrey, BC". */
+/** A labelled row, e.g. "Location — Vancouver, British Columbia". */
 export interface InfoItem {
   id: string
   label: string

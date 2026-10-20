@@ -7,8 +7,12 @@
  * array, so adding a section is one entry here plus one member of `SectionId`
  * rather than six edits that can disagree.
  *
- * Article *content* lives in a file per section and is imported rather than
- * inlined: this file stays scannable, and a content edit does not touch routing.
+ * Article *content* lives in a file per section under `data/` and is imported
+ * rather than inlined: this file stays scannable, and a content edit does not
+ * touch routing. The section headings and meta descriptions are content too, so
+ * they come from `data/sections.json`; what stays here is the part that is not
+ * a writing decision — which id owns which route, which icon, which layout, and
+ * which content module supplies the articles.
  *
  * Array order IS nav order, and nav order is also what the transition machine
  * reads to decide whether a move is forward or back (§5.2). It runs
@@ -25,8 +29,28 @@ import { aboutArticles } from '@/content/about'
 import { CONTACT_FORM_ENABLED, contactArticles } from '@/content/contact'
 import { educationArticles } from '@/content/education'
 import { experienceArticles } from '@/content/experience'
+import { parseSectionCopy, parseText } from '@/content/parse'
 import { skillsArticles } from '@/content/skills'
 import type { SectionDef, SectionId } from '@/types/content'
+import copy from './data/sections.json'
+
+const about = parseSectionCopy(copy.about, 'sections.json .about')
+const experience = parseSectionCopy(copy.experience, 'sections.json .experience')
+const education = parseSectionCopy(copy.education, 'sections.json .education')
+const skills = parseSectionCopy(copy.skills, 'sections.json .skills')
+const contact = parseSectionCopy(copy.contact, 'sections.json .contact')
+
+/**
+ * Contact ships two meta descriptions and the flag picks one. The description
+ * promises what the page delivers, so the clause about the form goes away with
+ * the form rather than advertising something a visitor arriving from a search
+ * result would not find. `description` in the JSON is the no-form wording, which
+ * is what the site ships today; `descriptionWithForm` is used when the form is
+ * switched back on.
+ */
+const contactDescription = CONTACT_FORM_ENABLED
+  ? parseText(copy.contact.descriptionWithForm, 'sections.json .contact.descriptionWithForm')
+  : contact.description
 
 export const SECTIONS: readonly SectionDef[] = [
   {
@@ -34,64 +58,36 @@ export const SECTIONS: readonly SectionDef[] = [
     // Exactly one section owns '/', and it is this one: a visitor who lands on
     // the bare domain should get the introduction, not a redirect.
     path: '/',
-    navLabel: 'About me',
-    titlePrefix: 'Hello, world',
-    titleLong: "I'm {{Manraj}}",
-    titleShort: 'About me',
-    description:
-      'Manraj Singh, senior software engineer in Surrey, BC: backend and distributed systems, AWS architecture, and retrieval-augmented generation.',
+    ...about,
     icon: 'about',
     articles: aboutArticles,
   },
   {
     id: 'experience',
     path: '/experience',
-    navLabel: 'Experience',
-    titlePrefix: 'What I have built',
-    titleLong: 'My {{experience}}',
-    titleShort: 'Experience',
-    description:
-      'Senior engineering roles at Ansys, Amazon and Amdocs, and the systems built at each: RAG assistants, cross-region search, and high-throughput APIs.',
+    ...experience,
     icon: 'experience',
     articles: experienceArticles,
   },
   {
     id: 'education',
     path: '/education',
-    navLabel: 'Education',
-    titlePrefix: 'Where it started',
-    titleLong: 'My {{education}}',
-    titleShort: 'Education',
-    description:
-      'Master of Applied Computer Science at Dalhousie University, a Bachelor of Engineering from Thapar Institute, and the projects that came out of both.',
+    ...education,
     icon: 'education',
     articles: educationArticles,
   },
   {
     id: 'skills',
     path: '/skills',
-    navLabel: 'Skills',
-    titlePrefix: 'What I work with',
-    titleLong: 'My {{skills}}',
-    titleShort: 'Skills',
-    description:
-      'The languages, frameworks and infrastructure Manraj Singh works in — Java, TypeScript, Python, Spring Boot, React and AWS — with years of use for each.',
+    ...skills,
     icon: 'skills',
     articles: skillsArticles,
   },
   {
     id: 'contact',
     path: '/contact',
-    navLabel: 'Contact me',
-    titlePrefix: 'Say hello',
-    titleLong: 'Get in {{touch}}',
-    titleShort: 'Contact me',
-    // The meta description promises what the page delivers, so the clause about
-    // the form goes away with the form rather than advertising something a
-    // visitor arriving from a search result would not find.
-    description: CONTACT_FORM_ENABLED
-      ? 'Get in touch with Manraj Singh by email, phone or LinkedIn, or send a message straight from the page.'
-      : 'Get in touch with Manraj Singh by email, phone, LinkedIn or GitHub — the direct channels, all on one page.',
+    ...contact,
+    description: contactDescription,
     icon: 'contact',
     // The only section that is not one column: §6.4 puts the form on the left and
     // the direct channels on the right. content/contact.ts already describes the

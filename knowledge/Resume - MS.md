@@ -1,7 +1,7 @@
 **MANRAJ SINGH**  
 ***Portfolio: [manrajsingh.ca](https://manrajsingh.ca/)***  
 *Permanent Resident \- **Canada***  
-1105 \- 13350 Central Ave Surrey, BC, V3T 0S1  
+Vancouver, British Columbia  
 **![Receiver with solid fill][image1](902) 412-9128  ![][image2][manrajsingh.ca](https://manrajsingh.ca/)  ![Envelope with solid fill][image3][smanraj54@gmail.com](mailto:smanraj54@gmail.com)  ![][image4][LinkedIn Profile-smanraj54](https://www.linkedin.com/in/smanraj54/)  ![][image5][GitHub-smanraj54](https://github.com/smanraj54)**
 
 **PROFILE** 

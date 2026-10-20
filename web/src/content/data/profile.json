@@ -1,0 +1,40 @@
+{
+  "name": "Manraj Singh",
+  "nameStylized": "Manraj {{Singh}}",
+  "roles": [
+    "Senior Software Engineer",
+    "Backend & Distributed Systems",
+    "AWS Cloud Architecture",
+    "RAG & Applied GenAI",
+    "Latency & High-Throughput APIs"
+  ],
+  "tagline": "I ship features across the whole stack and cut latency on systems already carrying traffic.",
+  "location": "Vancouver, British Columbia, Canada",
+  "email": "smanraj54@gmail.com",
+  "phone": "+19024129128",
+  "phoneDisplay": "(902) 412-9128",
+  "photo": "/portrait.svg",
+  "photoAlt": "Portrait of Manraj Singh",
+  "resumeUrl": null,
+  "status": {
+    "visible": true,
+    "variant": "open",
+    "message": "Open for Software development roles"
+  },
+  "socials": [
+    {
+      "id": "github",
+      "label": "GitHub",
+      "handle": "smanraj54",
+      "href": "https://github.com/smanraj54",
+      "icon": "github"
+    },
+    {
+      "id": "linkedin",
+      "label": "LinkedIn",
+      "handle": "smanraj54",
+      "href": "https://www.linkedin.com/in/smanraj54/",
+      "icon": "linkedin"
+    }
+  ]
+}

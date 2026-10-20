@@ -1,0 +1,139 @@
+{
+  "groups": [
+    {
+      "id": "languages",
+      "label": "Languages",
+      "icon": "code",
+      "skills": [
+        { "name": "Java", "years": 7, "level": "Advanced" },
+        { "name": "TypeScript", "years": 5, "level": "Advanced" },
+        { "name": "JavaScript", "years": 5, "level": "Advanced" },
+        { "name": "SQL", "years": 5, "level": "Proficient" },
+        { "name": "Node.js", "years": 4, "level": "Proficient" },
+        { "name": "Kotlin", "years": 4, "level": "Proficient" },
+        { "name": "Python", "years": 3, "level": "Proficient" },
+        { "name": "C++", "years": 2, "level": "Proficient" }
+      ]
+    },
+    {
+      "id": "backend",
+      "label": "Backend & APIs",
+      "icon": "server",
+      "skills": [
+        { "name": "REST APIs", "years": 7, "level": "Advanced" },
+        { "name": "Microservices", "years": 7, "level": "Advanced" },
+        { "name": "API Design", "years": 6, "level": "Advanced" },
+        { "name": "Distributed Systems", "years": 6, "level": "Advanced" },
+        { "name": "Spring Boot", "years": 6, "level": "Advanced" },
+        { "name": "Event-Driven Architecture", "years": 5, "level": "Proficient" },
+        { "name": "Authentication & SSO (OAuth, JWT)", "years": 5, "level": "Proficient" },
+        { "name": "WebSockets", "years": 3, "level": "Proficient" },
+        { "name": "gRPC", "years": 2, "level": "Proficient" }
+      ]
+    },
+    {
+      "id": "frontend",
+      "label": "Frontend",
+      "icon": "layers",
+      "skills": [
+        { "name": "HTML & CSS", "years": 7, "level": "Advanced" },
+        { "name": "React", "years": 5, "level": "Advanced" },
+        { "name": "Redux", "years": 4, "level": "Proficient" },
+        { "name": "Next.js", "years": 2, "level": "Proficient" },
+        { "name": "Angular", "years": 1, "level": "Working" },
+        { "name": "Electron", "years": 1, "level": "Working" }
+      ]
+    },
+    {
+      "id": "data",
+      "label": "Data & Storage",
+      "icon": "database",
+      "skills": [
+        { "name": "Data Modeling", "years": 6, "level": "Advanced" },
+        { "name": "DynamoDB", "years": 4, "level": "Advanced" },
+        { "name": "PostgreSQL", "years": 5, "level": "Proficient" },
+        { "name": "MySQL", "years": 5, "level": "Proficient" },
+        { "name": "Caching Strategies", "years": 5, "level": "Proficient" },
+        { "name": "OpenSearch", "years": 4, "level": "Proficient" },
+        { "name": "MongoDB", "years": 2, "level": "Proficient" }
+      ]
+    },
+    {
+      "id": "cloud",
+      "label": "AWS",
+      "icon": "cloud",
+      "wide": true,
+      "skills": [
+        { "name": "AWS", "years": 5, "level": "Advanced" },
+        { "name": "Amazon S3", "years": 5, "level": "Advanced" },
+        { "name": "DynamoDB", "years": 4, "level": "Advanced" },
+        { "name": "CloudWatch", "years": 5, "level": "Proficient" },
+        { "name": "IAM", "years": 5, "level": "Proficient" },
+        { "name": "EC2", "years": 5, "level": "Proficient" },
+        { "name": "CloudFormation", "years": 5, "level": "Proficient" },
+        { "name": "AWS Lambda", "years": 4, "level": "Proficient" },
+        { "name": "API Gateway", "years": 4, "level": "Proficient" },
+        { "name": "CloudFront", "years": 4, "level": "Proficient" },
+        { "name": "AWS CDK", "years": 4, "level": "Proficient" },
+        { "name": "ECS", "years": 4, "level": "Proficient" },
+        { "name": "EKS (Kubernetes)", "years": 4, "level": "Proficient" },
+        { "name": "ECR", "years": 4, "level": "Proficient" },
+        { "name": "EFS", "years": 4, "level": "Proficient" },
+        { "name": "RDS", "years": 4, "level": "Proficient" },
+        { "name": "SQS", "years": 4, "level": "Proficient" },
+        { "name": "Route 53", "years": 4, "level": "Proficient" },
+        { "name": "AWS WAF", "years": 4, "level": "Proficient" },
+        { "name": "Amazon Bedrock", "years": 2, "level": "Proficient" },
+        { "name": "OpenSearch Serverless", "years": 2, "level": "Proficient" }
+      ]
+    },
+    {
+      "id": "devops",
+      "label": "DevOps & Infrastructure",
+      "icon": "terminal",
+      "skills": [
+        { "name": "Git", "years": 7, "level": "Advanced" },
+        { "name": "Linux", "years": 7, "level": "Proficient" },
+        { "name": "CI/CD", "years": 6, "level": "Advanced" },
+        { "name": "Infrastructure as Code", "years": 5, "level": "Proficient" },
+        { "name": "Docker", "years": 5, "level": "Proficient" },
+        { "name": "GitHub Actions", "years": 5, "level": "Proficient" },
+        { "name": "Maven", "years": 5, "level": "Proficient" },
+        { "name": "Kubernetes", "years": 4, "level": "Proficient" }
+      ]
+    },
+    {
+      "id": "ai",
+      "label": "AI & Retrieval",
+      "icon": "sparkles",
+      "skills": [
+        { "name": "Generative AI Features", "years": 2, "level": "Proficient" },
+        { "name": "Amazon Bedrock", "years": 2, "level": "Proficient" },
+        { "name": "Retrieval-Augmented Generation", "years": 2, "level": "Proficient" },
+        { "name": "Prompt Engineering", "years": 2, "level": "Working" },
+        { "name": "Vector Search", "years": 1, "level": "Working" },
+        { "name": "Embeddings", "years": 1, "level": "Working" },
+        { "name": "LLM Application Architecture", "years": 1, "level": "Working" },
+        { "name": "MCP Servers", "years": 1, "level": "Working" }
+      ]
+    },
+    {
+      "id": "practice",
+      "label": "Performance & Practice",
+      "icon": "gauge",
+      "skills": [
+        { "name": "Agile / Scrum", "years": 7, "level": "Proficient" },
+        { "name": "System Design", "years": 6, "level": "Advanced" },
+        { "name": "Scalability", "years": 6, "level": "Advanced" },
+        { "name": "Code Review", "years": 6, "level": "Advanced" },
+        { "name": "Unit Testing (JUnit)", "years": 6, "level": "Proficient" },
+        { "name": "Latency Reduction", "years": 5, "level": "Advanced" },
+        { "name": "High-Throughput API Design", "years": 5, "level": "Advanced" },
+        { "name": "Observability", "years": 5, "level": "Proficient" },
+        { "name": "Mentoring", "years": 4, "level": "Proficient" },
+        { "name": "Test-Driven Development", "years": 4, "level": "Proficient" },
+        { "name": "Cypress", "years": 4, "level": "Proficient" }
+      ]
+    }
+  ]
+}

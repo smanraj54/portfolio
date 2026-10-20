@@ -8,6 +8,12 @@
     "allowArbitraryExtensions": true,
     "skipLibCheck": true,
 
+    /* Content is authored as JSON under src/content/data. Vite bundles a JSON
+     * import as a module, so there is no fetch at runtime; `content/parse.ts`
+     * adds the validation the compiler cannot, since a JSON import widens every
+     * string to `string`. */
+    "resolveJsonModule": true,
+
     /* PROJECT_CONTEXT.md §6 requires strict; the scaffolding never turned it on. */
     "strict": true,
 
