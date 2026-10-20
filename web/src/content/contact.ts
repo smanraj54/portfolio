@@ -100,7 +100,7 @@ const channelRows: InfoItem[] = [
   {
     id: 'contact-location',
     label: data.labels.location,
-    value: profile.location,
+    value: profile.location.full,
     icon: 'location',
     // No href on purpose. A map link would be a guess at a street address, and
     // the city is all this row is meant to say.

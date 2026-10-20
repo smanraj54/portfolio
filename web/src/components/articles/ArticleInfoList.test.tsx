@@ -48,7 +48,7 @@ function infoListFrom(articles: Article[], id: string): ArticleOf<'infoList'> {
 const LOCATION: InfoItem = {
   id: 'row-location',
   label: 'Location',
-  value: 'Vancouver, British Columbia, Canada',
+  value: 'Testville, Example Region, Testland',
   icon: 'location',
 }
 
@@ -112,7 +112,7 @@ describe('<ArticleInfoList>', () => {
     ])
     expect(
       screen.getAllByRole('definition').map((node) => node.textContent),
-    ).toEqual(['Vancouver, British Columbia, Canada', 'Java, TypeScript, Python'])
+    ).toEqual(['Testville, Example Region, Testland', 'Java, TypeScript, Python'])
   })
 
   it('keeps each label and value in a shared wrapper inside the list', () => {

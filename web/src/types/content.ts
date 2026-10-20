@@ -49,6 +49,31 @@ export interface AvailabilityStatus {
   message: string
 }
 
+/**
+ * Where the subject of the site lives, stated once as parts.
+ *
+ * The parts are what `data/profile.json` authors; the two joined forms are
+ * derived from them, so the city is written down exactly once and every place
+ * that renders it picks the shape it needs rather than restating the words. A
+ * consumer naming `full` or `cityRegion` is also saying which form it wants,
+ * which a bare `location: string` could not.
+ *
+ * The same parts fill the `%city%`, `%region%` and `%country%` tokens available
+ * in `data/sections.json` copy, and a node test holds the JSON-LD block in
+ * `index.html` to them — static HTML cannot import this, so it is checked
+ * instead.
+ */
+export interface Location {
+  city: string
+  /** Spelled out, e.g. "British Columbia" rather than "BC". */
+  region: string
+  country: string
+  /** `city, region, country` — the long form, for a labelled row. */
+  full: string
+  /** `city, region` — the short form, for running prose. */
+  cityRegion: string
+}
+
 export interface Profile {
   name: string
   /** RichText. e.g. "Manraj {{Singh}}" — the accent lands on the surname. */
@@ -58,7 +83,8 @@ export interface Profile {
   roles: string[]
   /** One line under the name in the sidebar. */
   tagline: string
-  location: string
+  /** The single source for the city. Consumers pick `full` or `cityRegion`. */
+  location: Location
   email: string
   /** E.164 for the tel: href. */
   phone: string
@@ -85,7 +111,6 @@ export interface Fact {
   icon?: IconName
 }
 
-/** A labelled row, e.g. "Location — Vancouver, British Columbia". */
 export interface InfoItem {
   id: string
   label: string

@@ -4,7 +4,7 @@
     "titlePrefix": "Hello, world",
     "titleLong": "I'm {{Manraj}}",
     "titleShort": "About me",
-    "description": "Manraj Singh, senior software engineer in Vancouver, British Columbia: backend and distributed systems, AWS architecture, and retrieval-augmented generation."
+    "description": "Manraj Singh, senior software engineer in %city%, %region%: backend and distributed systems, AWS architecture, and retrieval-augmented generation."
   },
   "experience": {
     "navLabel": "Experience",

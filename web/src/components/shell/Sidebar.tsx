@@ -224,7 +224,7 @@ export function Sidebar() {
 
       {!shrunk && (
         <ul role="list" className="flex flex-col gap-1">
-          <ContactRow icon="location" text={profile.location} />
+          <ContactRow icon="location" text={profile.location.full} />
           <ContactRow icon="mail" text={profile.email} href={`mailto:${profile.email}`} breakAnywhere />
           <ContactRow icon="phone" text={profile.phoneDisplay} href={`tel:${profile.phone}`} />
         </ul>

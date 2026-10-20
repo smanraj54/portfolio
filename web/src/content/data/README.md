@@ -82,6 +82,21 @@ The one person the site is about. The sidebar reads this on every route.
   visitor who prefers reduced motion sees element 0 statically, so element 0 has
   to stand alone as a job title. Keep each under ~32 characters or the typer
   wraps.
+- `location` is **the one place the city is written down.** It is stated as
+  parts, and the joined forms are derived from them:
+
+  | Derived      | Value                                 | Used by                          |
+  | ------------ | ------------------------------------- | -------------------------------- |
+  | `full`       | `Vancouver, British Columbia, Canada` | Sidebar, contact row, About row  |
+  | `cityRegion` | `Vancouver, British Columbia`         | available for prose              |
+
+  The parts also fill the `%city%`, `%region%` and `%country%` tokens in
+  `sections.json` copy. **To move city, edit these three fields and nothing
+  else.** The JSON-LD in `web/index.html` is the one copy that cannot refer to
+  this, because it is static HTML served before any JS runs — a node test
+  (`content/profile.node.test.ts`) fails if the two disagree, so it cannot drift
+  silently.
+
 - `phone` is E.164 for the `tel:` href; `phoneDisplay` is the same number
   spaced for humans. Both are needed.
 - `resumeUrl` is `null` until there is a publishable PDF, which hides the
@@ -195,11 +210,24 @@ renamed `aws` because the id is a React key.
 Three articles' worth of copy: the intro prose, the stat callouts, the
 at-a-glance rows.
 
-- `careerStart` is the only date here. The years-of-experience stat is computed
-  from it at build time, which is why that fact says `"computed":
-  "yearsExperience"` instead of a `value` — a hard-coded `"7.3"` is wrong a
-  month after it is written. The figure truncates rather than rounds up, so the
-  span is never overstated. A fact carries `value` or `computed`, never both.
+**Two rows say `"computed"` instead of a `value`.** That means the code supplies
+the string, because stating it here would be wrong or duplicated. A row carries
+`value` or `computed`, never both, and naming a key the code does not supply
+fails at import with the list of ones it does.
+
+| `"computed"`     | Comes from                | Why not typed here                            |
+| ---------------- | ------------------------- | --------------------------------------------- |
+| `yearsExperience`| `careerStart` below       | A hard-coded `"7.3"` is wrong a month later    |
+| `location`       | `profile.json` `location` | The city is stated there; two copies drift     |
+
+**To change the city, edit `profile.json`.** It feeds the sidebar, the contact
+row and the About row from that one field. Two other places also name it and
+are not wired to it: the About meta description in `sections.json`, which is
+different prose, and the JSON-LD in `web/index.html`, which is static HTML and
+cannot read these files.
+
+- The years figure truncates rather than rounds up, so the span is never
+  overstated.
 - `careerStart` is stated here rather than read off the oldest role in
   `experience.json` on purpose: `about.ts` has no other reason to know the roles
   list, and a dependency between two content modules is an import cycle waiting
@@ -260,6 +288,13 @@ icon it uses, and which content module supplies its articles all stay in
 Titles come in three widths on purpose. `titlePrefix` + `titleLong` are the
 display treatment from `lg` up; `titleShort` is plain text, which is what makes
 it usable both as the mobile heading and as `document.title`.
+
+Any of the five copy fields may use `%token%` to pull a value from
+`profile.json` rather than restate it. Available tokens: `%city%`, `%region%`,
+`%country%` — the About description uses the first two. An unknown token throws
+at import, naming the ones that exist, so `%ciyt%` fails rather than shipping
+into a meta description. These are separate tokens rather than one pre-joined
+`%location%` so the copy keeps control of the punctuation between them.
 
 - `titleLong` should accent exactly one phrase with `{{…}}`.
 - `titleShort` must stay free of RichText tokens.

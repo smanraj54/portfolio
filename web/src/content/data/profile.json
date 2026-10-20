@@ -9,7 +9,11 @@
     "Latency & High-Throughput APIs"
   ],
   "tagline": "I ship features across the whole stack and cut latency on systems already carrying traffic.",
-  "location": "Vancouver, British Columbia, Canada",
+  "location": {
+    "city": "Vancouver",
+    "region": "British Columbia",
+    "country": "Canada"
+  },
   "email": "smanraj54@gmail.com",
   "phone": "+19024129128",
   "phoneDisplay": "(902) 412-9128",

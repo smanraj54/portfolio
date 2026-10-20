@@ -29,16 +29,28 @@ import { aboutArticles } from '@/content/about'
 import { CONTACT_FORM_ENABLED, contactArticles } from '@/content/contact'
 import { educationArticles } from '@/content/education'
 import { experienceArticles } from '@/content/experience'
-import { parseSectionCopy, parseText } from '@/content/parse'
+import { fillTokens, parseSectionCopy, parseText } from '@/content/parse'
+import { profile } from '@/content/profile'
 import { skillsArticles } from '@/content/skills'
 import type { SectionDef, SectionId } from '@/types/content'
 import copy from './data/sections.json'
 
-const about = parseSectionCopy(copy.about, 'sections.json .about')
-const experience = parseSectionCopy(copy.experience, 'sections.json .experience')
-const education = parseSectionCopy(copy.education, 'sections.json .education')
-const skills = parseSectionCopy(copy.skills, 'sections.json .skills')
-const contact = parseSectionCopy(copy.contact, 'sections.json .contact')
+/**
+ * The `%token%` values available to `data/sections.json` copy. The city lives in
+ * `data/profile.json`, so a description that names it writes the tokens and the
+ * words arrive from there — moving city stays one edit.
+ */
+const TOKENS = {
+  city: profile.location.city,
+  region: profile.location.region,
+  country: profile.location.country,
+}
+
+const about = parseSectionCopy(copy.about, 'sections.json .about', TOKENS)
+const experience = parseSectionCopy(copy.experience, 'sections.json .experience', TOKENS)
+const education = parseSectionCopy(copy.education, 'sections.json .education', TOKENS)
+const skills = parseSectionCopy(copy.skills, 'sections.json .skills', TOKENS)
+const contact = parseSectionCopy(copy.contact, 'sections.json .contact', TOKENS)
 
 /**
  * Contact ships two meta descriptions and the flag picks one. The description
@@ -48,8 +60,14 @@ const contact = parseSectionCopy(copy.contact, 'sections.json .contact')
  * is what the site ships today; `descriptionWithForm` is used when the form is
  * switched back on.
  */
+const CONTACT_WITH_FORM = 'sections.json .contact.descriptionWithForm'
+
 const contactDescription = CONTACT_FORM_ENABLED
-  ? parseText(copy.contact.descriptionWithForm, 'sections.json .contact.descriptionWithForm')
+  ? fillTokens(
+      parseText(copy.contact.descriptionWithForm, CONTACT_WITH_FORM),
+      CONTACT_WITH_FORM,
+      TOKENS,
+    )
   : contact.description
 
 export const SECTIONS: readonly SectionDef[] = [

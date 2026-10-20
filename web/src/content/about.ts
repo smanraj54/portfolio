@@ -7,15 +7,17 @@
  * because `kind`, article ids and render order are structure rather than
  * content.
  *
- * One stat is derived rather than typed. The years-of-experience figure is
- * computed from `careerStart` in the JSON, so it cannot drift out of date
- * between deploys — a hard-coded "7.3" is wrong a month after it is written.
- * The JSON therefore names the figure it wants (`"computed": "yearsExperience"`)
- * and the arithmetic stays here. `careerStart` is stated in `about.json` rather
- * than read off the oldest role in `experience.json` on purpose: this module
- * has no other reason to know the roles list, and a dependency between two
- * content modules is an import cycle waiting to happen once `sections.ts` pulls
- * both in.
+ * Two values are supplied by this module rather than typed into the JSON, which
+ * names them with `"computed"` instead of stating a `value` — see `SUPPLIED`
+ * below. One is arithmetic that would go stale if written down; the other is
+ * already stated in `profile.json` and should not be stated twice.
+ *
+ * `careerStart` is stated in `about.json` rather than read off the oldest role
+ * in `experience.json` on purpose: this module has no other reason to know the
+ * roles list, and a dependency between two content modules is an import cycle
+ * waiting to happen once `sections.ts` pulls both in. The city is a different
+ * case — `profile.json` is content the shell already depends on, so reading it
+ * adds no cycle.
  *
  * Every figure traces to a line in the résumé, quoted at the résumé's own
  * precision (`~9000 TPS`, not "9000"), because the tilde is part of the claim.
@@ -40,10 +42,21 @@ import data from './data/about.json'
  */
 const CAREER_START = parseYearMonth(data.careerStart, 'about.json .careerStart')
 
-const COMPUTED_FACTS = {
+/**
+ * The values `about.json` names with `"computed"` instead of stating, because
+ * code owns them:
+ *
+ *   yearsExperience  derived from `careerStart`, so it cannot go stale.
+ *   location         read from `profile.json`, which is where the city is
+ *                    stated. The contact section's location row reads the same
+ *                    field, so the two cannot disagree and moving city is one
+ *                    edit rather than two.
+ */
+const SUPPLIED = {
   yearsExperience: formatYearsDecimal(
     monthsBetween({ start: CAREER_START, end: null }, nowYearMonth()),
   ),
+  location: profile.location.full,
 }
 
 export const aboutArticles: Article[] = [
@@ -58,12 +71,12 @@ export const aboutArticles: Article[] = [
   {
     kind: 'facts',
     id: 'about-facts',
-    items: parseFacts(data.facts, 'about.json .facts', COMPUTED_FACTS),
+    items: parseFacts(data.facts, 'about.json .facts', SUPPLIED),
   },
   {
     kind: 'infoList',
     id: 'about-quick-facts',
     title: parseText(data.quickFactsTitle, 'about.json .quickFactsTitle'),
-    items: parseInfoItems(data.quickFacts, 'about.json .quickFacts'),
+    items: parseInfoItems(data.quickFacts, 'about.json .quickFacts', SUPPLIED),
   },
 ]

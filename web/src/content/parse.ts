@@ -30,6 +30,9 @@ import type {
   DateRange,
   Fact,
   InfoItem,
+  // Shadows the DOM's `Location` on purpose — this module never touches
+  // `window.location`, and the import makes the content type the one in scope.
+  Location,
   Proficiency,
   Profile,
   ProjectItem,
@@ -241,30 +244,22 @@ export function parseTimelineItems(value: unknown, path: string): TimelineItem[]
 /* -------------------------------------------------------------------------- */
 
 /**
- * A fact states `value` verbatim or names a `computed` one, never both.
+ * A row either states its `value` verbatim or names a `computed` one, and never
+ * both. Shared by facts and info rows, which have the same need for different
+ * reasons:
  *
- * The indirection exists for a single row — years of experience — which must not
- * be typed into the content, because a hard-coded "7.3" is wrong a month after
- * it is written. `about.ts` passes the derived figures in, so the JSON names the
- * figure it wants and the arithmetic stays in code where it belongs.
+ *   - years of experience must not be typed in at all, because a hard-coded
+ *     "7.3" is wrong a month after it is written;
+ *   - the location is already stated in `profile.json`, and a second copy is a
+ *     second thing to keep right.
+ *
+ * Either way the caller passes the value in, so the JSON names what it wants and
+ * the single source of truth stays wherever it belongs.
  */
-function fact(value: unknown, path: string, computed: Readonly<Record<string, string>>): Fact {
-  const raw = record(value, path)
-
-  const item: Fact = {
-    id: text(raw.id, `${path}.id`),
-    value: factValue(raw, path, computed),
-    label: text(raw.label, `${path}.label`),
-  }
-  if (raw.icon !== undefined) item.icon = icon(raw.icon, `${path}.icon`)
-
-  return item
-}
-
-function factValue(
+function statedOrSupplied(
   raw: Record<string, unknown>,
   path: string,
-  computed: Readonly<Record<string, string>>,
+  supplied: Readonly<Record<string, string>>,
 ): string {
   if (raw.value !== undefined && raw.computed !== undefined) {
     fail(path, 'either `value` or `computed`, not both', raw)
@@ -272,28 +267,45 @@ function factValue(
   if (raw.computed === undefined) return text(raw.value, `${path}.value`)
 
   const key = text(raw.computed, `${path}.computed`)
-  const resolved = computed[key]
+  const resolved = supplied[key]
   if (resolved === undefined) {
-    fail(`${path}.computed`, `one of: ${Object.keys(computed).join(', ')}`, key)
+    fail(`${path}.computed`, `one of: ${Object.keys(supplied).join(', ')}`, key)
   }
   return resolved
+}
+
+function fact(value: unknown, path: string, supplied: Readonly<Record<string, string>>): Fact {
+  const raw = record(value, path)
+
+  const item: Fact = {
+    id: text(raw.id, `${path}.id`),
+    value: statedOrSupplied(raw, path, supplied),
+    label: text(raw.label, `${path}.label`),
+  }
+  if (raw.icon !== undefined) item.icon = icon(raw.icon, `${path}.icon`)
+
+  return item
 }
 
 export function parseFacts(
   value: unknown,
   path: string,
-  computed: Readonly<Record<string, string>> = {},
+  supplied: Readonly<Record<string, string>> = {},
 ): Fact[] {
-  return filledList(value, path, (item, itemPath) => fact(item, itemPath, computed))
+  return filledList(value, path, (item, itemPath) => fact(item, itemPath, supplied))
 }
 
-function infoItem(value: unknown, path: string): InfoItem {
+function infoItem(
+  value: unknown,
+  path: string,
+  supplied: Readonly<Record<string, string>>,
+): InfoItem {
   const raw = record(value, path)
 
   const item: InfoItem = {
     id: text(raw.id, `${path}.id`),
     label: text(raw.label, `${path}.label`),
-    value: text(raw.value, `${path}.value`),
+    value: statedOrSupplied(raw, path, supplied),
   }
 
   if (raw.icon !== undefined) item.icon = icon(raw.icon, `${path}.icon`)
@@ -303,8 +315,12 @@ function infoItem(value: unknown, path: string): InfoItem {
   return item
 }
 
-export function parseInfoItems(value: unknown, path: string): InfoItem[] {
-  return filledList(value, path, infoItem)
+export function parseInfoItems(
+  value: unknown,
+  path: string,
+  supplied: Readonly<Record<string, string>> = {},
+): InfoItem[] {
+  return filledList(value, path, (item, itemPath) => infoItem(item, itemPath, supplied))
 }
 
 /* -------------------------------------------------------------------------- */
@@ -370,6 +386,29 @@ function socialLink(value: unknown, path: string): SocialLink {
   return link
 }
 
+/**
+ * The city, stated once as parts and joined here.
+ *
+ * `full` and `cityRegion` are derived rather than authored so there is no way
+ * for them to disagree, and so moving city is one edit. Both joins use ", ",
+ * which is the only separator either form has ever used.
+ */
+function location(value: unknown, path: string): Location {
+  const raw = record(value, path)
+
+  const city = text(raw.city, `${path}.city`)
+  const region = text(raw.region, `${path}.region`)
+  const country = text(raw.country, `${path}.country`)
+
+  return {
+    city,
+    region,
+    country,
+    full: `${city}, ${region}, ${country}`,
+    cityRegion: `${city}, ${region}`,
+  }
+}
+
 function availability(value: unknown, path: string): AvailabilityStatus {
   const raw = record(value, path)
   return {
@@ -387,7 +426,7 @@ export function parseProfile(value: unknown, path: string): Profile {
     nameStylized: text(raw.nameStylized, `${path}.nameStylized`),
     roles: filledList(raw.roles, `${path}.roles`, text),
     tagline: text(raw.tagline, `${path}.tagline`),
-    location: text(raw.location, `${path}.location`),
+    location: location(raw.location, `${path}.location`),
     email: text(raw.email, `${path}.email`),
     phone: text(raw.phone, `${path}.phone`),
     phoneDisplay: text(raw.phoneDisplay, `${path}.phoneDisplay`),
@@ -419,14 +458,57 @@ export interface SectionCopy {
   description: string
 }
 
-export function parseSectionCopy(value: unknown, path: string): SectionCopy {
+/**
+ * `%token%` substitution for section copy.
+ *
+ * Section descriptions name the city in running prose, and a second copy of it
+ * is a second thing to keep right — so the copy writes `%city%, %region%` and
+ * the words arrive from `profile.json`. The author keeps control of the
+ * punctuation around them, which is why the parts are separate tokens rather
+ * than one pre-joined `%location%`.
+ *
+ * An unknown token throws rather than rendering literally, because `%ciyt%` in
+ * a meta description is the kind of mistake nobody reads closely enough to
+ * catch.
+ *
+ * `%…%` and not `{…}`: RichText already owns `{{text}}` and `[[text]]`, and a
+ * single-brace token would match the inside of both. Restricted to lowercase
+ * and hyphens so it cannot collide with a percentage — the bullets in
+ * `experience.json` are full of `{{50%}}` and `-84%`, and this runs only on
+ * section copy in any case.
+ */
+const TOKEN = /%([a-z-]+)%/g
+
+export function fillTokens(
+  value: string,
+  path: string,
+  tokens: Readonly<Record<string, string>>,
+): string {
+  return value.replace(TOKEN, (match, name: string) => {
+    const replacement = tokens[name]
+    if (replacement === undefined) {
+      fail(path, `a known token — one of ${Object.keys(tokens).join(', ')}`, match)
+    }
+    return replacement
+  })
+}
+
+export function parseSectionCopy(
+  value: unknown,
+  path: string,
+  tokens: Readonly<Record<string, string>> = {},
+): SectionCopy {
   const raw = record(value, path)
+
+  const copy = (key: keyof SectionCopy): string =>
+    fillTokens(text(raw[key], `${path}.${key}`), `${path}.${key}`, tokens)
+
   return {
-    navLabel: text(raw.navLabel, `${path}.navLabel`),
-    titlePrefix: text(raw.titlePrefix, `${path}.titlePrefix`),
-    titleLong: text(raw.titleLong, `${path}.titleLong`),
-    titleShort: text(raw.titleShort, `${path}.titleShort`),
-    description: text(raw.description, `${path}.description`),
+    navLabel: copy('navLabel'),
+    titlePrefix: copy('titlePrefix'),
+    titleLong: copy('titleLong'),
+    titleShort: copy('titleShort'),
+    description: copy('description'),
   }
 }
 
